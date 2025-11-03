@@ -1,0 +1,2248 @@
+<artifact identifier="autobongs-finder-complete" type="application/vnd.ant.code" language="liquid" title="Complete Autobongs Product Finder with All Questions">
+{% comment %}
+  Autobongs Product Finder – One Question Per Screen
+  - Each question appears on its own screen
+  - Dynamic progress based on question flow
+  - Handles conditional questions (dependsOn)
+{% endcomment %}
+<section id="ab-{{ section.id }}" class="flex justify-center items-start sm:items-center p-4 sm:p-8">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    /* Main Container */
+    #ab-{{ section.id }} {
+      min-height: 100vh;
+      background: #fff;
+    }
+
+    /* App Shell */
+    .app-shell {
+      background: #fff;
+      border-radius: 20px;
+      corner-radius: 20px;
+      padding: 28px;
+      max-width: 1000px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .progress-step {
+      flex: 1;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      transition: background 0.3s;
+    }
+
+    .progress-step.active {
+      background: #12064f;
+    }
+
+    .progress-step.completed {
+      background: #10b981;
+    }
+
+    /* Question Counter */
+    .question-counter {
+      color: #64748b;
+      font-size: 1.125rem;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    /* Options Grid */
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    /* Option Buttons */
+    .option-btn {
+      padding: 12px;
+      border: 4px solid #ddd;
+      background: #fff;
+      border-radius: 20px;
+      corner-radius: 20px;
+      cursor: pointer;
+      transition: all 0.25s;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .option-btn:hover {
+      border-color: #12064f;
+      background: #f5f3ff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+    }
+
+    .option-btn.selected {
+      background: #12064f;
+      border-color: #12064f;
+      color: #fff;
+    }
+
+    .option-btn.any {
+      background: #f5f5f5;
+      border-color: #bbb;
+    }
+
+    .option-btn.any.selected {
+      background: #888;
+      border-color: #888;
+      color: #fff;
+    }
+
+    /* Option Content */
+    .option-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 4px;
+    }
+
+    .option-title {
+      font-family: 'din-2014', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .option-description {
+      font-family: 'din-2014', sans-serif;
+      font-weight: 600;
+      font-size: 18px;
+      opacity: 0.85;
+      text-align: center;
+      width: 100%;
+    }
+
+    /* Navigation Buttons */
+    .nav-btn {
+      padding: 20px 26px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .nav-btn.back {
+      background: #e0e0e0;
+      color: #555;
+    }
+
+    .nav-btn.back:hover {
+      background: #d0d0d0;
+    }
+
+    .nav-btn.next,
+    .nav-btn.submit {
+      background: #12064f;
+      color: #fff;
+    }
+
+    .nav-btn.next:hover,
+    .nav-btn.submit:hover {
+      background: #12064f;
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Tag Chips */
+    .tag-chip {
+      background: #f5f3ff;
+      color: #12064f;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.28rem 0.55rem;
+      border-radius: 9999px;
+    }
+
+    /* Price Range Slider Styles */
+    .price-range-container {
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .slider-group {
+      margin-bottom: 2rem;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .price-display {
+      font-size: 1.5rem;
+      color: #12064f;
+      font-weight: 700;
+    }
+
+    .price-slider {
+      width: 100%;
+      height: 8px;
+      border-radius: 5px;
+      background: #e0e0e0;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .price-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #12064f;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .price-slider::-webkit-slider-thumb:hover {
+      background: #12064f;
+      transform: scale(1.1);
+    }
+
+    .price-slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #12064f;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .price-slider::-moz-range-thumb:hover {
+      background: #12064f;
+      transform: scale(1.1);
+    }
+
+    .price-range-summary {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 1.125rem;
+      color: #475569;
+    }
+
+    .skip-price-filter {
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .skip-link {
+      color: #64748b;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+
+    .skip-link:hover {
+      color: #475569;
+    }
+  </style>
+  <div class="app-shell text-center w-full">
+    <div class="text-center flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <h1 class="text-2xl font-bold text-slate-800">Autobongs Product Finder</h1>
+  <div class="flex flex-wrap items-center gap-3">
+    {% if section.settings.show_debug %}
+      <button id="btnDebug" class="nav-btn back">Debug</button>
+    {% else %}
+      <button id="btnDebug" class="nav-btn back hidden">Debug</button>
+    {% endif %}
+
+    <div id="debugMenu" class="hidden absolute right-0 mt-12 w-64 bg-white rounded-md shadow border z-10">
+      <button id="btnShowHeaders" class="block w-full text-left px-4 py-2 hover:bg-slate-50">Show headers</button>
+      <button id="btnShowSample" class="block w-full text-left px-4 py-2 hover:bg-slate-50">Show sample</button>
+      <button id="btnShowSelected" class="block w-full text-left px-4 py-2 hover:bg-slate-50">Show selections</button>
+    </div>
+  </div>
+</div>
+
+<div id="loadStatus" class="text-sm text-slate-700 mt-2">Loading products...</div>
+<div id="synonymStatus" class="text-xs text-slate-600 mt-1"></div>
+<div id="headerStatus" class="text-xs text-slate-600 mb-4"></div>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<section id="questionScreen">
+  <div class="question-counter" id="questionCounter"></div>
+  <h2 class="text-7xl font-bold text-slate-900 mb-1" id="questionTitle"></h2>
+  <br>
+  <p class="text-slate-600 mb-4 text-4xl" id="questionSubtitle"></p>
+  <br>
+  <div id="questionOptions" class="button-group"></div>
+  <div id="smartMatchContainer" class="mt-4 hidden">
+    <label class="text-sm inline-flex items-center gap-2">
+      <input id="smartMatch" type="checkbox" checked>
+      Smart match (allow 1 missing tag)
+    </label>
+  </div>
+
+  <div class="flex justify-between mt-6">
+    <button id="prevBtn" class="nav-btn back">Back</button>
+    <button id="nextBtn" class="nav-btn next" disabled>Next</button>
+  </div>
+</section>
+
+<section id="results-area" class="hidden">
+  <h2 class="text-2xl font-bold text-slate-900 mb-2">Top Recommendations</h2>
+  <p class="text-slate-700 mb-2">Tags used:</p>
+  <div id="tags-container" class="flex flex-wrap gap-2 bg-slate-50 p-4 rounded-lg mb-3"></div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="recommendation-list"></div>
+  <div class="mt-6 flex justify-between">
+    <button id="start-over" class="nav-btn back">Start Over</button>
+    <button id="back-to-questions" class="nav-btn next">Back</button>
+  </div>
+  <div id="debugDrawer" class="hidden mt-6 bg-white rounded-xl shadow p-4">
+    <div class="flex items-center justify-between mb-3">
+      <div class="font-semibold">Debug</div>
+      <button id="debugClose" class="text-slate-500">&times;</button>
+    </div>
+    <pre id="debugPre" class="text-xs overflow-auto max-h-72 bg-slate-50 p-3 rounded border"></pre>
+  </div>
+</section>
+  </div>
+  <script>
+  const state = {
+    products: [],
+    headers: [],
+    selections: {},
+    synonymMap: {},
+    questionFlow: [],
+    currentQuestionIndex: 0
+  };
+
+  const $ = id => document.getElementById(id);
+  
+  const CANONICALS = ["bongs","pipes","bubblers","vaporizers","dab rig","nectar collector","accessories","small","medium","large","mini","standard","glass","silicone","acrylic","ceramic","metal","wood","stone","tree perc","inline perc","showerhead perc","honeycomb perc","no perc","ice catcher","splash guard","10mm","14mm","18mm","male joint","female joint","fixed downstem","removable downstem","diffused downstem","downstem","bowl piece","carb cap","ash catcher","mouthpiece","45 degree","90 degree","storage","rolling tray","cleaning","charger","screens","adapter","clear","black","blue","green","pink","white","yellow","purple","gold","orange","silver","teal","brown","gray","animal","cat","owl","bear","fish","dragon","lion","horse","dog","tiger","dolphin","elephant","food","candy","cookie","donut","fruit","cake","pizza","burger","vegetable","ice cream","taco","pattern","check","swirl","stripe","spiral","camouflage","dot","polka","plant","herb","flower","mushroom","rose","bud","tree","leaf","cactus","vine","fern","theme","420","party","halloween","holiday","cosmic","alien","galaxy","festival","beach","christmas","dry","concentrated","portable","desktop","pen style","conduction","convection","hybrid","battery","butane","internal battery","replaceable battery","18650","18350","usb-c","micro usb","magnetic dock","510 thread","chamber ceramic","chamber stainless steel","chamber quartz","chamber glass","temp control","temp presets","no temp control","quartz coil","ceramic coil","titanium coil","no coil","on-demand","session","adjustable airflow","easy clean","quartz banger","titanium nail","ceramic nail","e-nail","electric","manual","dab tool","torch","timer"];
+  
+  const TAG_SYNONYMS = {"bongs":["bong","water pipe","water-pipe"],"dab rig":["rig","oil rig","concentrate rig","dab rigs","dab-rig"],"nectar collector":["honey straw","dab straw","nectar-collector","nectar-straw","nectar straw"],"dry":["dry herb","dry-herb"],"concentrated":["concentrate","concentrates","concentrated herb","concentrated-herb"],"tree perc":["tree percolator","tree","tree-arm","arm tree","8-arm tree","tree-perc"],"inline perc":["inline","inline percolator","inline diffuser","inline-perc"],"showerhead perc":["shower head perc","ufo perc","showerhead","shower-head perc"],"honeycomb perc":["honey comb perc","honey-comb perc","honeycomb-perc","honeycomb"],"10mm":["10 mm","10-mm"],"14mm":["14 mm","14-mm"],"18mm":["18 mm","18-mm"],"male joint":["male-joint"],"female joint":["female-joint"],"downstem":["down-stem","down stem"],"bowl piece":["bowl-piece","bowlpiece"],"carb cap":["carb-cap","carbcap"],"ash catcher":["ash-catcher","ashcatcher"],"mouthpiece":["mouth piece","mouth-piece"],"pen style":["pen-style","penstyle"],"e-nail":["enail","e nail"],"ice catcher":["ice-catcher"],"splash guard":["splash-guard"],"usb-c":["usb c","type-c","type c"],"micro usb":["micro-usb","micro usb port"],"magnetic dock":["magnetic charger","magnetic charge dock","mag-dock"],"510 thread":["510-thread","510"],"internal battery":["built-in battery","internal-battery"],"replaceable battery":["swappable battery","removable battery"],"45 degree":["45","45°"],"90 degree":["90","90°"],"quartz banger":["quartz nail","quartz bucket"],"titanium nail":["ti nail","titanium bucket"],"ceramic nail":["ceramic bucket"]};
+  state.synonymMap = TAG_SYNONYMS;
+
+  // Define SPEC_SETS - Product specification questions by category
+  window.SPEC_SETS = {
+  "bongs": [
+    {
+      q: "size",
+      title: "Let's start with bong size.",
+      subtitle: "We have bongs in all shapes and sizes, from a few inches tall to 6ft+.",
+      options: [
+        { label: "Any Size", tags: "", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "Mini", tags: "mini-bong", description: "1-4in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/miniBong.png?v=1761243313" },
+        { label: "Small", tags: "small-bong", description: "5-10in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/smallBong.png?v=1761243320" },
+        { label: "Medium", tags: "medium-bong", description: "10-17in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/MediumBong.png?v=1761251690" },
+        { label: "Large", tags: "large-bong", description: "17-30in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/LargeBong.png?v=1761252088" },
+        { label: "Jumbo", tags: "jumbo-bong", description: "30-72in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/JumboBong.png?v=1761252144" }
+      ]
+    },
+    {
+      q: "style",
+      title: "Select Your Preferred Bong Style",
+      subtitle: "Which bong style do you prefer? Choose the one that best fits your smoking experience—whether it's classic, artistic, or designed for maximum filtration.",
+      options: [
+        { label: "Any Style", tags: "", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+STYLE" },
+        { label: "Beaker Bottom", tags: "beaker-bottom-bong", description: "The classic bong shape, a conical base that is great for stability with a high-water capacity.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Beaker_Bottom.png?v=1761072598" },
+        { label: "Straight Tube", tags: "straight-tube-bong", description: "A straight tube with a wide base for stability. These don't hold as much water but they are easier to store.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Straight_Bottom_Bong.png?v=1761072642" },
+        { label: "Percolator Heavy", tags: "heavy-perc-bong", description: "These bongs are percolators stacked on percolators, they are totally percolator focused.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/pecolated_bongs.png?v=1761075316" },
+        { label: "Sidecar", tags: "sidecar-bong", description: "A barrel-shaped chamber with an offset and angled mouthpiece to prevent splashback.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sidecar_bong.png?v=1761072735" },
+        { label: "Glycerin Cooled", tags: "glycerin-bong", description: "These bongs have glycerin that can be cooled in a freezer for chilled rips without the use of ice.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glycerin_cooled_bong.png?v=1761074780" },
+        { label: "Strong", tags: "strong-bong", description: "These bongs are much stronger than most bongs, from thicker glass to stainless steel.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/strong_bongs.png?v=1761074806" },
+        { label: "Laser", tags: "laser-bong", description: "If you want to avoid using fire or other heating elements you can light up with lasers.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/laser_bubbler.png?v=1761074891" },
+        { label: "Novelty", tags: "novelty-bong", description: "Animals, Monsters, Food, Fun! We refer to these as wacky, kooky, and sometimes spooky.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/novelty_bongs.png?v=1761074835" },
+        { label: "Gravity", tags: "gravity-bong", description: "These pieces utilize gravity to draw and push the smoke or vapor through the chamber and out of the mouthpiece.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/gravity_bongs.png?v=1761074919" }
+      ]
+    },
+    {
+      q: "body-material",
+      title: "Choose your bong material.",
+      subtitle: "Material affects durability and taste.",
+      options: [
+        { label: "Any Material", tags: "", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+MATERIAL" },
+        { label: "Glass", tags: "glass", description: "The most popular bong material, offering clean flavor and visibility. Easy to clean and available in artistic or scientific styles.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Glass1.png?v=1761235513" },
+        { label: "Borosilicate Glass", tags: "borosilicate-glass-bong", description: "This glass is made with boron trioxide to fortify the glass into a stronger and more thermally resistant material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Borro1.png?v=1761235520" },
+        { label: "Silicone", tags: "silicone-bong", description: "Durable, flexible, and nearly unbreakable. Great for travel and rough environments. Easy to clean and lightweight.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Silicone1.png?v=1761235530" },
+        { label: "Ceramic", tags: "ceramic-bong", description: "Stylish and artistic, made for those with an appreciation for the finer things. Easy to clean and typically smaller than glass.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Ceramic1.png?v=1761236099" },
+        { label: "Metal", tags: "metal-bong", description: "Ultra-durable and portable, best for rugged use and long-lasting reliability. Made from aluminum or stainless steel.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Metal1.png?v=1761236107" },
+        { label: "Acrylic", tags: "acrylic-bong", description: "Lightweight and inexpensive, ideal for high-break situations. Durable and easy to clean but less flavorful than glass.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Arcylic1.png?v=1761236178" }
+      ]
+    },
+    {
+      q: "perc-type",
+      title: "Choose your bong preferred percolator(s).",
+      subtitle: "Which type of percolator do you prefer in your bong? Choose the one that gives you the smoothest, coolest, and most satisfying hits.",
+      options: [
+        { label: "Any Perc", tags: "", description: "No percolator preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+PERC" },
+        { label: "Showerhead", tags: "showerhead-perc-for-bong", description: "A circular perc with vertical slits for a showerhead effect.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/showerhead_bong_perc.png?v=1761074990" },
+        { label: "Honeycomb", tags: "honeycomb-perc-for-bong", description: "A disc with dozens of tiny holes to break smoke into fine bubbles.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honeycomb_bong_perc.png?v=1761075020" },
+        { label: "Inline", tags: "inline-perc-for-bong", description: "Horizontal slitted tube for those who like a lighter rip with more air.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/inline_bong_perc.png?v=1761075046" },
+        { label: "Matrix", tags: "matrix-perc-for-bong", description: "Cylindrical perc with grid-like slits for maximum diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/matrix_bong_perc.png?v=1761075078" },
+        { label: "Turbine", tags: "turbine-perc-for-bong", description: "Creates a spinning vortex of water and air for extra cooling.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/turbine_bong_perc.png?v=1761075104" },
+        { label: "Swiss", tags: "swiss-perc-for-bong", description: "An upright disc that uses holes to create complex passage ways for smoke.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/swiss_bong_perc.png?v=1761075505" },
+        { label: "Tree Armed", tags: "tree-arm-perc-for-bong", description: "Multiple arms with slits, resembling a tree, can be hard to keep clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/tree_arm_bong_perc.png?v=1761075547" },
+        { label: "Barrel", tags: "barrel-perc-for-bong", description: "Cylindrical barrel-shaped perc with slits for consistent filtration.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/barrel_bong_perc.png?v=1761075578" },
+        { label: "Disc", tags: "disc-perc-for-bong", description: "Flat disc with slits at the base of the bong chamber for light filtration.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/disc_bong_perc.png?v=1761075616" },
+        { label: "Coil", tags: "coil-perc-for-bong", description: "Spiral-shaped perc that slows and cools vapor through a twisted coil.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/coil_bong_perc.png?v=1761075713" },
+        { label: "Donut", tags: "donut-perc-for-bong", description: "Upright donut-shaped perc that filters vapor through holes or slits.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/donut_bong_perc.png?v=1761075817" },
+        { label: "UFO", tags: "ufo-perc-for-bong", description: "Flying saucer-shaped perc offering light and even diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ufo_bong_perc.png?v=1761075794" },
+        { label: "Inset", tags: "inset-perc-for-bong", description: "A indented perc shaped like a bucket for smooth light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/inset_bong_perc.png?v=1761075855" },
+        { label: "Sprinkler", tags: "sprinkler-perc-for-bong", description: "Small, splayed, inverted tubes that spit smoke and water like a fountain.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sprinkler_bong_perc.png?v=1761075892" },
+        { label: "Crystal Ball", tags: "crystal-ball-perc-for-bong", description: "Ball-shaped perc with slits for a light and circulated diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/crystal_ball_bong_perc.png?v=1761075928" },
+        { label: "Cyclone", tags: "cyclone-perc-for-bong", description: "Creates a cyclone effect for an exciting and dramatic experience.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cyclone_bong_perc.png?v=1761075965" },
+        { label: "Fritted", tags: "fritted-perc-for-bong", description: "Fritted glass discs of tiny glass pieces and tiny holes for light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fritted_bong_perc.png?v=1761075991" },
+        { label: "Slitted Cone", tags: "slitted-cone-perc-for-bong", description: "Cone-shaped perc with slits around the bottom of the cone.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/slitted_cone_bong_perc.png?v=1761076023" },
+        { label: "Jellyfish", tags: "jellyfish-perc-for-bong", description: "Multiple thin arms that are slightly splayed like octopus arms.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/spherical_ball_perc.png?v=1761076178" },
+        { label: "Dome", tags: "dome-perc-for-bong", description: "A slitted dome-shaped perc for a light and thorough diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dome_ball_perc.png?v=1761076127" },
+        { label: "Incycler", tags: "incycler-perc-for-bong", description: "Internal recycler design that continuously cycles water inside the chamber.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/incycler_bong_perc.png?v=1761076201" },
+        { label: "Recycler", tags: "recycler-perc-for-bong", description: "Moves water through multiple chambers and back again, filtering repeatedly.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/recycler_bong_perc.png?v=1761076226" },
+        { label: "Gravity Recycler", tags: "gravity-recycler-perc-for-bong", description: "Uses gravity to recycle water, creating a loop that cools and purifies.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/gravity_recycler_bong_perc.png?v=1761076290" }
+      ]
+    },
+    {
+      q: "joint-size",
+      title: "Choose your preferred bong joint size.",
+      subtitle: "Must match your bowl and accessories.",
+      options: [
+        { label: "Any Joint Size", tags: "bongs", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "10mm", tags: "10mm", description: "SMALL", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/10joint.png?v=1761340666" },
+        { label: "14mm", tags: "14mm", description: "STANDARD", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/14joint.png?v=1761340666" },
+        { label: "18mm", tags: "18mm", description: "OVERSIZED", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/18joint.png?v=1761340666" }
+      ]
+    },
+    {
+      q: "joint-style",
+      title: "Choose your preferred bong joint style.",
+      subtitle: "Joint styles come in 'male' and 'female'. Female joints are the most common style and require male bowl pieces. Male joints require a female bowl piece.",
+      options: [
+        { label: "Any Joint Style", tags: "joint", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+JOINT" },
+        { label: "Male Joint", tags: "male-bong-joint", description: "Pole", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/maleJoint.png?v=1761340792" },
+        { label: "Female Joint", tags: "female-bong-joint", description: "Hole", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/18joint.png?v=1761340666" }
+      ]
+    },
+    {
+      q: "downstem-type",
+      title: "Choose your preferred bong downstem.",
+      subtitle: "What downstem style do you prefer in a bong? Choose the one that matches your ideal balance of airflow, filtration, and cleaning ease.",
+      options: [
+        { label: "Any Downstem", tags: "downstem", description: "No downstem preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+DOWNSTEM" },
+        { label: "Natural / Fixed", tags: "natural-fixed-downstem", description: "Built directly into the bong for durability and simplicity.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/naturalfixed_bong_downstem.png?v=1761076402" },
+        { label: "Showerhead", tags: "showerhead-downstem", description: "Features a flared end with slits like a showerhead.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/showerhead_bong_downstem.png?v=1761076427" },
+        { label: "Slit Diffused", tags: "slit-diffused-downstem", description: "Horizontal slits near the base with a hole at the bottom.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/slitted_bong_downstem.png?v=1761076456" },
+        { label: "Honeycomb", tags: "honeycomb-downstem", description: "A small barrel with small holes  for maximum filtration.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honeycomb_bong_downstem.png?v=1761076488" },
+        { label: "Straight Tube", tags: "straight-tube-downstem", description: "A basic open-ended tube with no diffusion. Easiest to clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/straight_tube_bong_downstem.png?v=1761076516" },
+        { label: "German", tags: "german-downstem", description: "Parallel rows of small holes for maximum filtration.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/german_bong_downstem.png?v=1761076539" },
+        { label: "Tree Armed", tags: "tree-armed-downstem", description: "Multiple vertical arms with slits for advanced diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/tree_armed_bong_downstem.png?v=1761076572" },
+        { label: "Fission", tags: "fission-downstem", description: "Two vertical rows of small offset holes for great diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fission_bong_downstem.png?v=1761076600" },
+        { label: "Hole Diffused", tags: "hole-diffused-downstem", description: "Four small holes at the bottom of the stem for good diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hole-diffused_bong_downstem.png?v=1761076628" },
+        { label: "Matrix", tags: "matrix-downstem", description: "A complex grid of fine cuts for powerful diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/matrix_bong_downstem.png?v=1761076639" }
+      ]
+    },
+    {
+      q: "downstem-size",
+      title: "Select Your Preferred Bong Downstem Size",
+      subtitle: "These numbers refer to the size of the bowl piece that you will be placing in the downstem.",
+      options: [
+        { label: "Any Downstem Size", tags: "downstem", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "10mm Downstem", tags: "10mm-downstem-for-bong", description: "For 10mm bowls", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/10Stem.png?v=1761340318" },
+        { label: "14mm Downstem", tags: "14mm-downstem-for-bong", description: "For 14mm bowls", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/14Stem.png?v=1761340318" },
+        { label: "18mm Downstem", tags: "18mm-downstem-for-bong", description: "For 18mm bowls", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/18Stem.png?v=1761340318" }
+      ]
+    },
+    {
+      q: "downstem-material",
+      title: "Choose your bong downstem material(s)",
+      subtitle: "Which downstem material do you prefer for your bong? Pick the one that fits your needs for flavor, durability, and maintenance.",
+      options: [
+        { label: "Any Material", tags: "", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+MATERIAL" },
+        { label: "Glass", tags: "glass-downstem-for-bong", description: "Provides clean flavor and smooth airflow. Easy to clean but breakable, making it ideal for low-break environments.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Glass1.png?v=1761235513" },
+        { label: "Borosilicate Glass", tags: "borosilicate-glass-downstem-for-bong", description: "This glass is made with boron trioxide to fortify the glass into a stronger and more thermally resistant material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Borro1.png?v=1761235520" },
+        { label: "Silicone", tags: "silicone-downstem-for-bong", description: "Flexible, unbreakable, and heat-resistant. Great for travel and beginners, though it may slightly affect flavor.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Silicone1.png?v=1761235530" },
+          { label: "Metal", tags: "metal-downstem-for-bong", description: "Extremely durable and long-lasting. Best for rugged use, but can alter the taste slightly compared to glass or silicone.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Metal1.png?v=1761236107" }
+        ]
+    },
+    {
+      q: "bowl-size",
+      title: "Select Your Preferred Bowl Piece Size",
+      subtitle: "This does not have to do with how much the bowl can hold. This number matches the joint size for your piece.",
+      options: [
+        { label: "Any Bowl Size", tags: "bowl piece", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "10mm Bowl", tags: "10mm-bowl-piece-for-bong", description: "For 10mm joints", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/10Bowl.png?v=1761339343" },
+        { label: "14mm Bowl", tags: "14mm-bowl-piece-for-bong", description: "For 14mm joints", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/14Bowl.png?v=1761339343" },
+        { label: "18mm Bowl", tags: "18mm-bowl-piece-for-bong", description: "For 18mm joints", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/18Bowl.png?v=1761339344" },
+        { label: "19mm Bowl", tags: "19mm-bowl-piece-for-bong", description: "For 19mm joints", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/19Bowl.png?v=1761339575" }
+      ]
+    },
+    {
+      q: "bowl-style",
+      title: "What type of bong bowl piece do you prefer?",
+      subtitle: "Different styles for different preferences.",
+      options: [
+        { label: "Any Bowl", tags: "bowl piece", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+BOWL" },
+        { label: "Standard", tags: "standard-bowl-piece-for-bong", description: "These bowls are best for regular sized rips.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/standard_bowl_piece.png?v=1761076727" },
+        { label: "Snapper", tags: "snapper-bowl-piece-for-bong", description: "These bowls are best for small, personal rips.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/snapper_bowl_piece.png?v=1761076738" },
+        { label: "Oversized", tags: "oversized-bowl-piece-for-bong", description: "These bowls are best for large, shared rips.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/oversized_bowl_piece.png?v=1761076746" },
+        { label: "Artistic", tags: "artistic-bowl-piece-for-bong", description: "These bowls are combinations of beautiful shapes and colors.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/artistic_bowl_piece.png?v=1761077358" },
+        { label: "Novelty", tags: "novelty-bowl-piece-for-bong", description: "Animals, Unique, Fun! Wacky, kooky, and sometimes spooky.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/novelty_bowl_piece.png?v=1761077384" },
+        { label: "Screened", tags: "screened-bowl-piece-for-bong", description: "Keeps the water cleaner but might need frequent cleaning.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/screened_bowl_piece.png?v=1761077410" },
+        { label: "Glycerin Cooled", tags: "glycerin-cooled-bowl-piece-for-bong", description: "These use glycerin to cool your rip, must be chilled in a freezer or fridge prior to use.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glycerin_cooled_bowl_piece.png?v=1761077419" },
+        { label: "Slide", tags: "slide-bowl-piece-for-bong", description: "These are for bongs with rubber grommets, which usually means its a soft glass piece.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/slide_bowl_piece.png?v=1761077427" }
+      ]
+    },
+    {
+      q: "bowl-material",
+      title: "Choose your bong bowl piece material(s).",
+      subtitle: "Material affects taste and heat retention.",
+      options: [
+        { label: "Any Material", tags: "", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+MATERIAL" },
+        { label: "Glass", tags: "glass-bowl-piece-for-bong", description: "Delivers pure flavor and smooth hits. Easy to clean and widely used but breakable and best for low-break environments.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Glass1.png?v=1761235513" },
+        { label: "Borosilicate", tags: "borosilicate-bowl-piece-for-bong", description: "This glass is made with boron trioxide to fortify the glass into a stronger and more thermally resistant material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Borro1.png?v=1761235520" },
+        { label: "Metal", tags: "metal-bowl-piece-for-bong", description: "Tough and long-lasting. Great for travel or high-break environments, though it can slightly alter the taste of your herb.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Metal1.png?v=1761236107" }
+      ]
+    },
+    {
+      q: "add-ons",
+      title: "Choose your bong add-ons.",
+      subtitle: "Which bong add-ons do you want to enhance your experience? Choose the extras that matter most.",
+      options: [
+        { label: "No Add-Ons", tags: "", description: "I do not want any add-ons", image: "https://placehold.co/400x280/64748b/white?text=NO+ADDONS" },
+        { label: "Any Feature", tags: "", description: "No add-on preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+ADDON" },
+        { label: "Ash Catcher", tags: "ash-catcher-for-bong", description: "Keeps your water cleaner and can add percolation. These are placed in the joint of the bong and can hold the bowl piece.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ash_catchers.png?v=1761077490" },
+        { label: "Adapters", tags: "adapters-for-bong", description: "Small double-joint adapters are used when you have a 14mm bowl piece and an 18mm bong joint, or other mismatch combination.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/adapters_for_bongs.png?v=1761077513" },
+        { label: "Glycerin Cooling", tags: "glycerin-cooling-for-bong", description: "These contain glycerin and can be cooled in a freezer or fridge for chilled rips without using ice.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glycerin_cooling_for_bong.png?v=1761077823" },
+        { label: "Bowl Piece", tags: "bowl-piece-for-bong", description: "These holds your herbs and go into the downstem of your bong. They come in many sizes and styles.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bowl_pieces_for_bongs.png?v=1761077851" },
+        { label: "Downstem", tags: "downstem-for-bong", description: "You place this inside the bong joint and fill the bong high enough to cover the bottom of the stem with water.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/downstems.png?v=1761077867" }
+      ]
+    },
+    {
+      q: "ash-catcher-type",
+      title: "Choose your preferred ash catcher(s).",
+      subtitle: "Ash catchers are placed in or on the joint of the bong and secure the bowl piece. They help keep your water clean by catching the ash from the rip in a chamber.",
+      options: [
+        { label: "No Ash Catcher", tags: "", description: "I do not want an ash catcher", image: "https://placehold.co/400x280/64748b/white?text=NO+ASH+CATCHER" },
+        { label: "Any Type", tags: "ash-catcher", description: "No type preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+TYPE" },
+        { label: "45 Degree", tags: "45-degree-ash-catcher-for-bong", description: "45 degree slanted joint for beaker-style or angled-neck bongs, great for ergonomic positions.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/45_degree_ash_catcher.png?v=1761078637" },
+        { label: "90 Degree", tags: "90-degree-ash-catcher-for-bong", description: "90 degree right angle ash catcher perfect for upright bongs and upright smoking positions.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/90_degree_ash_catcher.png?v=1761078641" },
+        { label: "Showerhead", tags: "showerhead-ash-catcher-for-bong", description: "Features a shower-style slitted disc for light, smooth, and even hits.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/showerhead_ash_catcher.png?v=1761078823" },
+        { label: "Honeycomb", tags: "honeycomb-ash-catcher-for-bong", description: "Uses a perforated disc with tiny holes for a soft and silky rip.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honeycomb_ash_catcher.png?v=1761080059" },
+        { label: "Mushroom", tags: "mushroom-ash-catcher-for-bong", description: "Mushroom-shaped perc with slits or holes that adds whimsical functionality to your piece.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/mushroom_ash_catcher.png?v=1761080073" },
+        { label: "Tree Armed", tags: "tree-armed-ash-catcher-for-bong", description: "Multi-armed perc with several slitted arms for excellent diffusion. Can be hard to keep clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/tree_armed_ash_catcher.png?v=1761080141" },
+        { label: "Waterless", tags: "waterless-ash-catcher-for-bong", description: "Uses internal chambers to trap ash and debris without the need for water.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/waterless_ash_catcher.png?v=1761080301" },
+        { label: "Swiss", tags: "swiss-ash-catcher-for-bong", description: "Upright hole-punched disc that forms passageways for the smoke to travel.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/swiss_ash_catcher.png?v=1761080311" },
+        { label: "Recycler", tags: "recycler-ash-catcher-for-bong", description: "Recirculates water and smoke through an extra chamber and tubes.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/recycler_ash_catcher.png?v=1761080338" },
+        { label: "Egg", tags: "egg-ash-catcher-for-bong", description: "Egg-shaped with swirling chambers offering unique diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/egg_ash_catcher.png?v=1761080453" },
+        { label: "Donut", tags: "donut-ash-catcher-for-bong", description: "Circular perc resembling a donut, designed to guide smoke in a loop for cooling and ash dispersion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/donut_ash_catcher.png?v=1761080482" },
+        { label: "Rainbow", tags: "rainbow-ash-catcher-for-bong", description: "U-shaped perc resembling a rainbow, bringing cheer and smooth diffusion to every hit.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/rainbow_ash_catcher.png?v=1761080491" },
+        { label: "Barrel Diffusor", tags: "barrel-diffusor-ash-catcher-for-bong", description: "Horizontal barrel-shaped perc with slits for thorough and smooth diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/barrel_diffusor_ash_catcher.png?v=1761080519" },
+        { label: "Showerhead Recycler", tags: "showerhead-recycler-ash-catcher-for-bong", description: "Combines recycler function with a showerhead perc for excellent functionality.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/showerhead_recycler_ash_catcher_for_bong.png?v=1761336051" }
+      ]
+    },
+    {
+      q: "ash-catcher-material",
+      title: "Choose your preferred ash catcher material.",
+      subtitle: "What ashcatcher material do you prefer for your bong? Choose the one that fits your style, durability needs, and flavor expectations.",
+      options: [
+        { label: "Any Material", tags: "ash catcher", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+MATERIAL" },
+        { label: "Glass", tags: "glass-ash-catcher-for-bong", description: "Great for flavor, easy to clean, but easier to break than silicone.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Glass1.png?v=1761235513" },
+        { label: "Silicone", tags: "silicone-ash-catcher-for-bong", description: "Flexible, nearly indestructible, and easy to clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Silicone1.png?v=1761235530" },
+        { label: "Borosilicate Glass", tags: "borosilicate-glass-ash-catcher-for-bong", description: "This glass is made with boron trioxide to fortify the glass into a stronger and more thermally resistant material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Borosilicate1.png?v=1761235547" }
+      ]
+    }
+  ],
+
+  "bubblers": [
+    {
+      q: "bubbler-size",
+      title: "Bubbler Size",
+      subtitle: "What size bubbler do you prefer? Choose the one that best fits your lifestyle—whether you want something pocket-sized, travel-ready, or perfect for home use.",
+      options: [
+        { label: "Any Size", tags: "bubblers", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "Mini", tags: "mini-bubbler", description: "1-2in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/BubblerMini.png?v=1761592514" },
+        { label: "Small", tags: "small-bubbler", description: "3-4in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/BubblerSmall.png?v=1761592514" },
+        { label: "Medium", tags: "medium-bubbler", description: "5-6in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/BubblerMedium.png?v=1761592515" },
+        { label: "Large", tags: "large-bubbler", description: "7-8in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/BubblerLarge.png?v=1761592515" },
+        { label: "Jumbo", tags: "jumbo-bubbler", description: "9-12in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/BubblerJumbo.png?v=1761592515" }
+      ]
+    },
+    {
+      q: "bubbler-material",
+      title: "Material",
+      subtitle: "Which bubbler material do you prefer? Pick the one that matches your ideal balance of flavor, durability, and portability.",
+      options: [
+        { label: "Any Material", tags: "bubblers", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Glass", tags: "glass-bubbler", description: "The most popular bubbler material, offering clean flavor and visibility. Easy to clean and available in artistic or scientific styles.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Glass1.png?v=1761235513" },
+        { label: "Borosilicate Glass", tags: "borosilicate-glass-bubbler", description: "This glass is made with boron trioxide to fortify the glass into a stronger and more thermally resistant material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Borro1.png?v=1761235520" },
+        { label: "Silicone", tags: "silicone-bubbler", description: "Nearly unbreakable, great for travel and rough environments. Easy to clean and lightweight.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Silicone1.png?v=1761235530" },
+        { label: "Ceramic", tags: "ceramic-bubbler", description: "Elegant but relatively fragile. Retains heat well but not see-through and slightly harder to clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Ceramic1.png?v=1761236099" },
+        { label: "Metal", tags: "metal-bubbler", description: "Ultra-durable and portable. Great for rugged use but can alter taste and get hot quickly.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Metal1.png?v=1761236107" },
+        { label: "Acrylic", tags: "acrylic-bubbler", description: "Lightweight and affordable. Less fragile than glass, but can stain and affect flavor over time.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Arcylic1.png?v=1761236178" },
+        { label: "Glass / Silicone Hybrid", tags: "glass-silicone-hybrid-bubbler", description: "Combines clean glass hits with a durable silicone shell. Good balance of flavor and toughness.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/GSHybrid1.png?v=1761235676" },
+        { label: "Glass / Wood Hybrid", tags: "glass-wood-hybrid-bubbler", description: "Stylish and unique, offering natural wood feel with the smooth hit of glass. More fragile and harder to clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/GW1.png?v=1761236780" },
+        { label: "Glass / Metal Hybrid", tags: "glass-metal-hybrid-bubbler", description: "Tough exterior with clean glass airflow. Great for travel and flavor without full glass fragility.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/GM1.png?v=1761236836" }
+      ]
+    },
+    {
+      q: "bubbler-style",
+      title: "Choose your preferred bubbler style.",
+      subtitle: "What bubbler style do you like best? Choose the one that fits your vibe—classic, creative, compact, or something totally unique.",
+      options: [
+        { label: "Any Style", tags: "bubblers", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+STYLE" },
+        { label: "Hammer", tags: "hammer-bubbler", description: "Shaped like a hammer with a flat base for stability.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hammer_bubbler.png?v=1761080768" },
+        { label: "Sherlock", tags: "sherlock-bubbler", description: "Curved neck design like Sherlock’s pipe.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sherlock_bubbler.png?v=1761080792" },
+        { label: "Sidecar", tags: "sidecar-bubbler", description: "Side-mounted mouthpiece that reduces splash-back.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sidecar_bubbler.png?v=1761080823" },
+        { label: "Spherical", tags: "spherical-bubbler", description: "Round-body bubbler with a strong bubbling action.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/spherical_bubbler.png?v=1761081643" },
+        { label: "Coffee Mug", tags: "coffee-mug-bubbler", description: "Looks like a coffee mug with a straw-like mouthpiece for morning vibes.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/coffee_mug_bubbler.png?v=1761081650" },
+        { label: "Slush Cup", tags: "slush-cup-bubbler", description: "Designed like a to-go slushy cup with a straw-like mouthpiece.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/slush_cup_bubbler.png?v=1761081660" },
+        { label: "Milk Carton", tags: "milk-carton-bubbler", description: "Square and stout design that looks like a mini milk carton.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/milk_carton_bubbler.png?v=1761081708" },
+        { label: "Wave", tags: "wave-bubbler", description: "Features a flowing, curved body for eye-catching style and ergonomic use.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/wave_bubbler.png?v=1761081716" },
+        { label: "Wedge", tags: "wedge-bubbler", description: "Angled shape that rests securely on surfaces.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/wedge_bubbler.png?v=1761081722" },
+        { label: "Rain", tags: "rain-bubbler", description: "A body resembling a water  droplet.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/rain_bubbler.png?v=1761082179" },
+        { label: "Glass Knuckles", tags: "glass-knuckles-bubbler", description: "Styled and worn on fingers like brass knuckles.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glass_knuckles_bubbler.png?v=1761082187" },
+        { label: "Blunt", tags: "blunt-bubbler", description: "Small and used to smoke with a blunt or joint.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/blunt_bubbler.png?v=1761082195" },
+        { label: "Novelty", tags: "novelty-bubbler", description: "Fun, quirky, silly, unique, animals, oddities.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/novelty_bubbler.png?v=1761082301" },
+        { label: "Laser", tags: "laser-bubbler", description: "Harness the power of lasers to ignite your herbs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/laser_bubbler.png?v=1761074891" },
+        { label: "Electric", tags: "electric-bubbler", description: "Built-in heating elements using batteries or outlets.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/electric_bubbler.png?v=1761082366" },
+        { label: "Glycerin Cooled", tags: "glycerin-cooled-bubbler", description: "Contains freezable glycerin chambers that cool smoke for smoother, icy hits without ice cubes.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glycerin_cooled_bubbler.png?v=1761082377" }
+      ]
+    }
+  ],
+
+  "pipes": [
+    {
+      q: "pipe-size",
+      title: "Pipe Size",
+      subtitle: "We have pipes as small as pendants and as large as an adult cat.",
+      options: [
+        { label: "Any Size", tags: "pipes", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "Mini", tags: "mini", description: "1-2in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/one-hitter_pipe_aa8c2731-53db-4055-9bec-639ac9f32b1c.png?v=1761591407" },
+        { label: "Small", tags: "small", description: "3-4in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/spoon_pipe_6cdaccb5-5d82-4b8a-b5c6-f39e97e1c227.png?v=1761591425" },
+        { label: "Medium", tags: "medium", description: "5-6in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glass_sherlock_pipe_350c3c0d-8cff-43e1-a3b2-d77947deaf5e.png?v=1761591505" },
+        { label: "Large", tags: "large", description: "7-9in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/steamroller_pipe_f06b1dc6-467b-4cf0-bb0b-25f3f2199ad9.png?v=1761591426" },
+        { label: "Jumbo", tags: "jumbo", description: "10-16in", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/gandalf_pipe_a4a47dca-b90a-45cb-b58b-200d5e8473b9.png?v=1761591464" }
+      ]
+    },
+    {
+      q: "pipe-material",
+      title: "Choose your preferred pipe material.",
+      subtitle: "What pipe material do you prefer? Choose the one that best fits your taste, durability needs, and smoking experience.",
+      options: [
+        { label: "Any Material", tags: "pipes", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Glass", tags: "glass-pipe", description: "Delivers pure flavor and smooth hits. Easy to clean but fragile. Glass is ideal for flavor-focused smokers.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Glass1.png?v=1761235513" },
+        { label: "Borosilicate Glass", tags: "borosilicate-glass-pipe", description: "This glass is made with boron trioxide to create a stronger and more thermally resistant material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Borro1.png?v=1761235520" },
+        { label: "Silicone", tags: "silicone-pipe", description: "Nearly unbreakable and travel-friendly. Great for rough use.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Silicone1.png?v=1761235530" },
+        { label: "Metal", tags: "metal-pipe", description: "Tough and long-lasting. Great for portability, but can get hot and may alter taste.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Metal1.png?v=1761236107" },
+        { label: "Wood", tags: "wood-pipe", description: "Natural look with earthy hits. Durable and stylish but needs occasional care.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Wood1.png?v=1761237564" },
+        { label: "Stone", tags: "stone-pipe", description: "Heavy and nearly indestructible. Smooth hits but is harder to clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Stone1.png?v=1761237684" },
+        { label: "Resin", tags: "resin-pipe", description: "Molded into fun shapes but as durable and may hold odor.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Resin1.png?v=1761242492" },
+        { label: "Ceramic", tags: "ceramic-pipe", description: "Artistic and heat-resistant. Heavier and sometimes more fragile.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Ceramic1.png?v=1761236099" },
+        { label: "Meerschaum", tags: "meerschaum-pipe", description: "Porous mineral that delivers cool, dry hits while it colors beautifully over time.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Meer1.png?v=1761242583" },
+        { label: "Crystal / Gemstone Hybrid", tags: "crystal-gemstone-hybrid-pipe", description: "Heavy and visually stunning pipes that stay cool and deliver smooth hits.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/crystal1.png?v=1761242720" },
+        { label: "Glass / Metal Hybrid", tags: "glass-metal-hybrid-pipe", description: "Offers clean glass flavor with the strength of metal, a great balance of durability and taste.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/GM1.png?v=1761236836" },
+        { label: "Platinum Cured", tags: "platinum-cured-pipe", description: "Extremely durable and lightweight metal. Heats quickly and retains heat well. May impart a slight metallic taste.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/PlattCure1.png?v=1761242873"  }
+
+      ]
+    },
+    {
+      q: "pipe-material-wood",
+      title: "Select your preferred pipe wood.",
+      subtitle: "What type of wood do you prefer for your pipe? Choose the one that matches your style, feel, and desired smoking experience. Each have a slight distinct flavor to them.",
+      options: [
+        { label: "Any Wood", tags: "pipes", description: "No wood preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+WOOD" },
+        { label: "Briar", tags: "briar-wood-pipe", description: "Traditional, heat-resistant", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/briar_wood.png?v=1761082487" },
+        { label: "Cherry", tags: "cherry-wood-pipe", description: "Sweet mild flavor", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cherry_wood.png?v=1761082496" },
+        { label: "Pear", tags: "pear-wood-pipe", description: "Light, smooth", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/pear_wood.png?v=1761082505" },
+        { label: "Olive", tags: "olive-wood-pipe", description: "Dense, beautiful grain", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/olive_wood.png?v=1761082518" },
+        { label: "Elder", tags: "elder-wood-pipe", description: "Traditional choice", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/elder_wood.png?v=1761082531" },
+        { label: "Maple", tags: "maple-wood-pipe", description: "Light, clean flavor", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/maple_wood.png?v=1761082541" },
+        { label: "White Ash", tags: "white-ash-wood-pipe", description: "Neutral flavor", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/white_ash.png?v=1761082756" },
+        { label: "African Mahogany", tags: "african-mahogany-wood-pipe", description: "Rich color", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/african_mohoghany.png?v=1761082780" },
+        { label: "Walnut", tags: "walnut-wood-pipe", description: "Dark, elegant", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/walnut_wood.png?v=1761082791" },
+        { label: "Curly Maple", tags: "curly-maple-wood-pipe", description: "Unique grain pattern", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/curly_maple_wood.png?v=1761082799" },
+        { label: "Sycamore", tags: "sycamore-wood-pipe", description: "Light wood", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sycamore_wood.png?v=1761082808" },
+        { label: "Cedar", tags: "cedar-wood-pipe", description: "Aromatic wood", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cedar_wood.png?v=1761082816" },
+        { label: "Bamboo", tags: "bamboo-wood-pipe", description: "Eco-friendly", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bamboo.png?v=1761082823" },
+        { label: "Redwood", tags: "redwood-wood-pipe", description: "Rich red color", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/redwood.png?v=1761082905" },
+        { label: "Zebra", tags: "zebra-wood-pipe", description: "Striped pattern", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/zebra_wood.png?v=1761082915" },
+        { label: "Birdseye Maple", tags: "birdseye-maple-wood-pipe", description: "Distinctive eye pattern", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/birdseye_maple.jpg?v=1761082923" },
+        { label: "Padauk", tags: "padauk-wood-pipe", description: "Bright orange-red", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/padauk_wood.png?v=1761082935" },
+        { label: "Red Oak", tags: "red-oak-wood-pipe", description: "Strong, classic", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/red_oak.png?v=1761082944" },
+        { label: "Ash", tags: "ash-wood-pipe", description: "Durable, light", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ash_wood.png?v=1761082959" },
+        { label: "Sassafras", tags: "sassafras-wood-pipe", description: "Aromatic, unique", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sassafras_wood.png?v=1761082966" }
+      ]
+    },
+    {
+      q: "pipe-style",
+      title: "Select your preferred style of pipe.",
+      subtitle: "Which pipe style do you prefer? Pick the one that best fits your vibe.",
+      options: [
+        { label: "Any Style", tags: "pipes", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+STYLE" },
+        { label: "Spoon", tags: "spoon-pipe", description: "Classic glass pipe with a rounded bowl and finger carb.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/spoon_pipe.png?v=1761083068" },
+        { label: "Sherlock", tags: "sherlock-pipe", description: "A curved and longer version of the spoon pipe.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glass_sherlock_pipe.png?v=1761083076" },
+        { label: "One Hitter", tags: "one-hitter-pipe", description: "Slim, discreet pipe for quick hits and easy storage.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/one-hitter_pipe.png?v=1761083087" },
+        { label: "Dugout", tags: "dugout-pipe", description: "Pocket-sized case with a one-hitter and herb storage.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dugout_pipe.png?v=1761083094" },
+        { label: "Glass Blunt", tags: "glass-blunt-pipe", description: "Twist-fed glass pipe that mimics a blunt due to its size.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glass_blunt_pipe.png?v=1761083105" },
+        { label: "Steamroller", tags: "steamroller-pipe", description: "Larger open-ended pipe for larger powerful hits.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/steamroller_pipe.png?v=1761083119" },
+        { label: "Bent Apple", tags: "bent-apple-pipe", description: "Classic pipe with round bowl and curved stem.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bent_apple_pipe.png?v=1761083132" },
+        { label: "Billiard", tags: "billiard-pipe", description: "Iconic straight-stem pipe with a round bowl for a balanced draw.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/billiard_pipe.png?v=1761083142" },
+        { label: "Brandy", tags: "brandy-pipe", description: "Wide, round bowl shaped like a brandy glass.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/brandy_wood_pipe.png?v=1761083235" },
+        { label: "Calabash", tags: "calabash-pipe", description: "Gourd-shaped pipe with dramatic curve for smooth hits.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/calabash_pipe.png?v=1761083242" },
+        { label: "Dublin", tags: "dublin-pipe", description: "Tapered bowl with slanted rim, easy to pack and classy in design.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dublin_pipe.png?v=1761083250" },
+        { label: "Prince", tags: "prince-pipe", description: "Rounded bowl with slim, curved stem and a light draw.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/prince_pipe.png?v=1761083259" },
+        { label: "Tomato", tags: "tomato-pipe", description: "Tomato shaped bowl with short stem for a balanced feel.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/tomato_pipe.png?v=1761083273" },
+        { label: "Bent Tomato", tags: "bent-tomato-pipe", description: "Tomato-shaped bowl with a bent stem for comfort.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bent_tomato_pipe.png?v=1761083283" },
+        { label: "Church Warden Tomahawk", tags: "church-warden-tomahawk-pipe", description: "Extra long stem", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/church_warden_tomahawk.png?v=1761083294" },
+        { label: "Gandalf", tags: "gandalf-pipe", description: "Extra-long stem with a bowl turned upwards facing you.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/gandalf_pipe.png?v=1761083302" },
+        { label: "Animal", tags: "animal-pipe", description: "Fun pipes shaped like animals or animal themed.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/animal_pipes.png?v=1761083310" },
+        { label: "Novelty", tags: "novelty-pipe", description: "Unusual or themed pipes, often fun or artistic.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/novelty_pipes.png?v=1761083318" }
+      ]
+    },
+    {
+      q: "pipe-hand",
+      title: "Pipe Hand",
+      subtitle: "We have pipes designed for both left-handed and right-handed users.",
+      options: [
+        { label: "Any Hand", tags: "pipes", description: "Ambidextrous design", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+HAND" },
+        { label: "Left-Handed", tags: "left-handed", description: "Designed for lefties", image: "https://placehold.co/400x280/3b82f6/white?text=LEFT+HAND" },
+        { label: "Right-Handed", tags: "right-handed", description: "Designed for righties", image: "https://placehold.co/400x280/ec4899/white?text=RIGHT+HAND" }
+      ]
+    }
+  ],
+
+  "vaporizers": [
+    // DRY-HERB VAPORIZER QUESTIONS (existing, with dependsOn added)
+    {
+      q: "dry-herb-vaporizer-size",
+      title: "Let's start with dry-herb vaporizer sizes.",
+      subtitle: "What size dry herb vaporizer do you prefer? Choose the one that best fits your lifestyle—from ultra-portable to powerful, home-friendly devices.",
+      dependsOn: { q: "dry-category", value: "vaporizers" },
+      options: [
+        { label: "Any Size", tags: "", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "Mini", tags: "mini-dry-herb-vaporizer", description: "1\"-4.5\"", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ConVapeMini.png?v=1761590434" },
+        { label: "Small", tags: "small-dry-herb-vaporizer", description: "4.51\"-6 inches", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ConVapeSmall.png?v=1761590435" },
+        { label: "Medium", tags: "medium-dry-herb-vaporizer", description: "6.1\"-8 inches", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ConVapeJumbo.png?v=1761590435" },
+        { label: "Large", tags: "large-dry-herb-vaporizer", description: "8.1 inches +", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/DryVapeJumbo.png?v=1761605564" }
+      ]
+    },
+    {
+      q: "dry-herb-vaporizer-style",
+      title: "Select your preferred style of dry-herb vaporizer.",
+      subtitle: "Do you prefer a session or on-demand style for your dry herb vaporizer? Choose the one that matches your pace—long sessions or quick, controlled hits.",
+      dependsOn: { q: "dry-category", value: "vaporizers" },
+      options: [
+        { label: "Any Style", tags: "", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+STYLE" },
+        { label: "Session", tags: "session-dry-herb-vaporizer", description: "Heats continuously for full sessions. Great for relaxed, extended use with multiple hits per bowl.", image: "https://placehold.co/400x280/f59e0b/white?text=SESSION" },
+        { label: "On Demand", tags: "on-demand-dry-herb-vaporizer", description: "Heats up instantly with each draw. Ideal for quick, controlled hits and saving herb.", image: "https://placehold.co/400x280/dc2626/white?text=ON+DEMAND" }
+      ]
+    },
+    {
+      q: "dry-herb-vaporizer-style-2",
+      title: "Select your preferred style of dry-herb vaporization.",
+      subtitle: "Which dry herb vaporization style do you prefer for your sessions? Choose the one that best fits your flavor, heat-up speed, and vapor quality needs.",
+      dependsOn: { q: "dry-category", value: "vaporizers" },
+      options: [
+        { label: "Any Method", tags: "", description: "No method preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+METHOD" },
+        { label: "Conduction", tags: "conduction-dry-herb-vaporizer", description: "Heats herb by direct contact. Fast heat-up, great for quick hits, but may risk uneven burn.", image: "https://placehold.co/400x280/dc2626/white?text=CONDUCTION" },
+        { label: "Convection", tags: "convection-dry-herb-vaporizer", description: "Uses hot air to heat herb evenly. Smooth, flavorful vapor with better temperature control.", image: "https://placehold.co/400x280/3b82f6/white?text=CONVECTION" },
+        { label: "Induction", tags: "induction-dry-herb-vaporizer", description: "Magnetic heating for fast, even vapor. Efficient and modern with minimal combustion risk.", image: "https://placehold.co/400x280/8b5cf6/white?text=INDUCTION" },
+        { label: "Hybrid", tags: "hybrid-dry-herb-vaporizer", description: "Combines conduction and convection for balanced heat, flavor, and vapor production.", image: "https://placehold.co/400x280/10b981/white?text=HYBRID" }
+      ]
+    },
+    {
+      q: "dry-herb-vaporizer-add-percolation",
+      title: "Would you like your dry-herb vaporizer to have percolation?",
+      subtitle: "Do you want percolation in your dry herb vaporizer? Percolation helps cool and filter the vapor for a smoother hit.",
+      dependsOn: { q: "dry-category", value: "vaporizers" },
+      options: [
+        { label: "Any Percolation", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "No percolation", tags: "no-percolation", description: "Direct vapor path", image: "https://placehold.co/400x280/64748b/white?text=NO+PERC" },
+        { label: "Built-in percolation", tags: "percolated-dry-herb-vaporizer", description: "Integrated water filtration", image: "https://placehold.co/400x280/06b6d4/white?text=BUILT+IN" },
+        { label: "Percolation accessory", tags: "perc-for-dry-herb-vaporizer", description: "Add-on water piece", image: "https://placehold.co/400x280/8b5cf6/white?text=ACCESSORY" }
+      ]
+    },
+    {
+      q: "dry-herb-vaporizer-add-percolation-options",
+      title: "What kind of percolator would you like to add to your dry-herb vaporizer?",
+      subtitle: "Do you want percolation in your dry herb vaporizer? Percolation helps cool and filter the vapor for a smoother hit.",
+      dependsOn: { q: "dry-category", value: "vaporizers" },
+      options: [
+        { label: "Add any Percolation", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Recycler", tags: "recycler-perc-for-dry-herb-vaporizer", description: "Direct vapor path", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/recycler_dry_herb_vaporizer_addon_90b23088-c462-49ce-baff-1ed3b332386c.png?v=1761253747" },
+        { label: "Hole Diffusion", tags: "hole-diffusion-perc-for-dry-herb-vaporizer", description: "Integrated water filtration", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hole_diffusion_dry_herb_vaporizer.png?v=1761084003" },
+        { label: "Fabcycler", tags: "fabcycler-perc-for-dry-herb-vaporizer", description: "The power of a recycler combined with the intricate diffusion of a fab egg delivers a whole new level of diffusion and filtration.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fabcycler_dry_herb_vaporizer_addon.png?v=1761083671" },
+        { label: "Ryan Fitt Cone Recycler", tags: "ryan-fitt-recycler-for-dry-herb-vaporizer", description: "A fluted inner-funnel and external intake tubes provide greater water volume and improved filtration.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ryan_fitt_cone_recycler_dry_herb_vaporizer_addon.png?v=1761083776" },
+        { label: "Ryan Fitt Sherlock Recycler", tags: "ryan-fitt-sherlock-recycler-for-dry-herb-vaporizer", description: "A slitted disc perc topped with a recycler makes this sherlock-shaped addon an elegant and functional upgrade.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ryan_fitt_sherock_recycler_dry_herb_vaporizer_addon.png?v=1761083804" },
+        { label: "Showerhead", tags: "showerhead-perc-for-dry-herb-vaporizer", description: "A slitted showerhead perc for thorough and light diffusion. Light means that it has more oxygen than a sharp rip made from tiny holes.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/showerhead_dry_herb_vaporizer_addon.png?v=1761083850" },
+        { label: "Donut", tags: "donut-perc-for-dry-herb-vaporizer", description: "A fun and effective donut-shaped perc with small holes for sharp and crisp diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/donut_dry_herb_vaporizer_addon.png?v=1761083876" },
+        { label: "Mushroom", tags: "mushroom-perc-for-dry-herb-vaporizer", description: "This whimsical and effective perc is mushroom shaped with small holes for sharp and crisp diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/mushroom_dry_herb_vaporizer_addon.png?v=1761083909" },
+        { label: "Dome", tags: "dome-perc-for-dry-herb-vaporizer", description: "A slitted dome perc for even vapor distribution and light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dome_dry_herb_vaporizer_addon.png?v=1761083931" },
+        { label: "Slitted Cone", tags: "slitted-cone-perc-for-dry-herb-vaporizer", description: "A slitted cone perc for conical vapor distribution and light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/slitted_cone_dry_herb_vaporizer_addon.png?v=1761083941E" }
+      ]
+    },
+    {
+      q: "dry-herb-vaporizer-with-percolation-options",
+      title: "What kind of percolation do you want your dry-herb vaporizer to come with?",
+      subtitle: "You will also be able to choose additional percolator styles as addon accessories, these are just the two styles that come with devices by default.",
+      dependsOn: { q: "dry-category", value: "vaporizers" },
+      options: [
+        { label: "With any Percolation", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Hole Diffusion", tags: "hole-diffused-dry-herb-vaporizer,percolated-dry-herb-vaporizer", description: "Small holes that are ideal for sharp and crisp percolation.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hole_diffusion_dry_herb_vaporizer.png?v=1761084003" },
+        { label: "Straight Tube", tags: "Straight-tube-perc-dry-herb-vaporizer,percolated-dry-herb-vaporizer", description: "A simple yet effective straight tube with a hole at the end.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/straight_tube_dry_herb_vaporizer.png?v=1761084030" }
+      ]
+    },
+
+    // NEW: CONCENTRATED-HERB VAPORIZER QUESTIONS
+    {
+      q: "concentrate-vaporizer-size",
+      title: "Let's start with concentrate vaporizer size.",
+      subtitle: "What size concentrate vaporizer do you prefer? Choose the one that best fits your lifestyle—from ultra-portable to powerful, home-friendly devices.",
+      dependsOn: { q: "conc-category", value: "vaporizers" },
+      options: [
+        { label: "Any Size", tags: "", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "Mini", tags: "mini-concentrated-herb-vaporizer", description: "4-6 inches", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ConVapeMini.png?v=1761590434" },
+        { label: "Small", tags: "small-concentrated-herb-vaporizer", description: "6-8 inches, battery powered", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ConVapeSmall.png?v=1761590435L" },
+        { label: "Medium", tags: "medium-concentrated-herb-vaporizer", description: "8+ inches, plug-in power", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ConVapeJumbo.png?v=1761590435" }
+      ]
+    },
+    {
+      q: "concentrate-vaporizer-style",
+      title: "Select your preferred style of concentrate vaporizer.",
+      subtitle: "Do you prefer a session or on-demand style for your concentrate vaporizer? Choose the one that matches your pace—long sessions or quick, controlled hits.",
+      dependsOn: { q: "conc-category", value: "vaporizers" },
+      options: [
+        { label: "Any Style", tags: "", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+STYLE" },
+        { label: "Session", tags: "session-concentrate-vaporizer", description: "Heats continuously for full sessions. Great for relaxed, extended use with multiple hits per load.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Session.png?v=1761591058" },
+        { label: "On Demand", tags: "on-demand-concentrate-vaporizer", description: "Heats up instantly with each draw. Ideal for quick, controlled hits and saving concentrate.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Ondemand.png?v=1761591064" }
+      ]
+    },
+   // {
+   //   q: "concentrate-vaporizer-power",
+   //   title: "Select your preferred power source.",
+  //    subtitle: "How do you want to power your concentrate vaporizer? Choose based on your portability needs and usage patterns.",
+   //   dependsOn: { q: "conc-category", value: "vaporizers" },
+   //   options: [
+    //    { label: "Any Power", tags: "", description: "No power preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+POWER" },
+     //   { label: "Battery", tags: "battery-concentrate-vaporizer", description: "Rechargeable battery for portable use. USB-C or micro USB charging.", image: "https://placehold.co/400x280/3b82f6/white?text=BATTERY" },
+    //    { label: "Plug-In", tags: "plug-in-concentrate-vaporizer", description: "Wall outlet powered. Consistent power for desktop use and extended sessions.", image: "https://placehold.co/400x280/eab308/white?text=PLUG+IN" },
+    //    { label: "Butane", tags: "butane-concentrate-vaporizer", description: "Torch-heated concentrate vaporizer. No batteries or outlets needed.", image: "https://placehold.co/400x280/f59e0b/white?text=BUTANE" }
+   //   ]
+  // },
+    {
+      q: "concentrate-vaporizer-atomizer",
+      title: "Choose your preferred atomizer/coil type.",
+      subtitle: "Which heating element type do you prefer for your concentrate vaporizer? Choose the one that fits your flavor, heat-up speed, and maintenance preferences.",
+      dependsOn: { q: "conc-category", value: "vaporizers" },
+      options: [
+        { label: "Any Coil", tags: "", description: "No coil preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+COIL" },
+        { label: "Coilless/Cup", tags: "coilless-concentrate-vaporizer", description: "Smooth ceramic or quartz cup with no exposed coil. Heats evenly, easy to clean, great for flavor.", image: "https://placehold.co/400x280/10b981/white?text=COILLESS" },
+        { label: "Quartz Coil", tags: "quartz-coil-concentrate-vaporizer", description: "Heats up quickly for powerful, tasty hits. Best for fast dabs and high temps.", image: "https://placehold.co/400x280/e5e7eb/475569?text=QUARTZ+COIL" },
+        { label: "Ceramic Coil", tags: "ceramic-coil-concentrate-vaporizer", description: "Even, low-temp heating for smooth hits and full flavor from concentrates.", image: "https://placehold.co/400x280/fbbf24/78716c?text=CERAMIC+COIL" },
+        { label: "Titanium Coil", tags: "titanium-coil-concentrate-vaporizer", description: "Durable and heats quickly. Long-lasting but may slightly affect flavor.", image: "https://placehold.co/400x280/64748b/white?text=TITANIUM" },
+        { label: "510 Thread", tags: "510-thread-concentrate-vaporizer", description: "Universal battery for pre-filled concentrate cartridges. Compact and easy to use.", image: "https://placehold.co/400x280/8b5cf6/white?text=510+THREAD" }
+      ]
+    },
+    {
+      q: "concentrate-vaporizer-add-percolation",
+      title: "Would you like your concentrate vaporizer to have percolation?",
+      subtitle: "Do you want percolation in your concentrate vaporizer? Percolation helps cool and filter the vapor for a smoother hit.",
+      dependsOn: { q: "conc-category", value: "vaporizers" },
+      options: [
+        { label: "Any Percolation", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "No percolation", tags: "no-percolation-concentrate-vaporizer", description: "Direct vapor path for maximum flavor", image: "https://placehold.co/400x280/64748b/white?text=NO+PERC" },
+        { label: "Built-in percolation", tags: "percolated-concentrate-vaporizer", description: "Integrated water filtration for smoother hits", image: "https://placehold.co/400x280/06b6d4/white?text=BUILT+IN" },
+        { label: "Percolation accessory", tags: "perc-accessory-concentrate-vaporizer", description: "Add-on water piece or bubbler attachment", image: "https://placehold.co/400x280/8b5cf6/white?text=ACCESSORY" }
+      ]
+    },
+    {
+      q: "concentrate-vaporizer-add-percolation-options",
+      title: "What kind of percolator would you like to add to your concentrate vaporizer?",
+      subtitle: "Select the percolation style that best matches your preference for vapor cooling and filtration.",
+      dependsOn: { q: "conc-category", value: "vaporizers" },
+      options: [
+        { label: "Add any Percolation", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Recycler", tags: "recycler-perc-for-concentrate-vaporizer", description: "Continuously cycles water for maximum cooling", image: "https://placehold.co/400x280/14b8a6/white?text=RECYCLER" },
+        { label: "Hole Diffusion", tags: "hole-diffusion-perc-for-concentrate-vaporizer", description: "Small holes for sharp, crisp percolation", image: "https://placehold.co/400x280/06b6d4/white?text=HOLE+DIFFUSION" },
+        { label: "Showerhead", tags: "showerhead-perc-for-concentrate-vaporizer", description: "Slitted disc perc for thorough and light diffusion", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/showerhead_recycler_ash_catcher_for_concentrated_herb_vaporizer.png?v=1761336073" },
+        { label: "Honeycomb", tags: "honeycomb-perc-for-concentrate-vaporizer", description: "Perforated disc with tiny holes for smooth filtration", image: "https://placehold.co/400x280/f59e0b/white?text=HONEYCOMB" },
+        { label: "Donut", tags: "donut-perc-for-concentrate-vaporizer", description: "Fun donut-shaped perc with small holes for sharp diffusion", image: "https://placehold.co/400x280/ec4899/white?text=DONUT" },
+        { label: "Mushroom", tags: "mushroom-perc-for-concentrate-vaporizer", description: "Whimsical mushroom perc with small holes for crisp diffusion", image: "https://placehold.co/400x280/8b5cf6/white?text=MUSHROOM" }
+      ]
+    },
+    {
+      q: "concentrate-vaporizer-with-percolation-options",
+      title: "What kind of percolation do you want your concentrate vaporizer to come with?",
+      subtitle: "These are the percolation styles that come built into some concentrate vaporizers. You can still add accessory percolators later.",
+      dependsOn: { q: "conc-category", value: "vaporizers" },
+      options: [
+        { label: "With any Percolation", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Hole Diffusion", tags: "hole-diffused-concentrate-vaporizer,percolated-concentrate-vaporizer", description: "Small holes ideal for sharp and crisp percolation", image: "https://placehold.co/400x280/06b6d4/white?text=HOLE+DIFFUSION" },
+        { label: "Straight Tube", tags: "straight-tube-perc-concentrate-vaporizer,percolated-concentrate-vaporizer", description: "Simple yet effective straight tube with a hole at the end", image: "https://placehold.co/400x280/64748b/white?text=STRAIGHT+TUBE" }
+      ]
+    },
+    {
+      q: "concentrate-vaporizer-temp-control",
+      title: "Do you want temperature control?",
+      subtitle: "Temperature control lets you dial in the perfect heat for your concentrates. Lower temps preserve flavor, higher temps produce bigger clouds.",
+      dependsOn: { q: "conc-category", value: "vaporizers" },
+      options: [
+        { label: "Any Control", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Precise Temp Control", tags: "precise-temp-concentrate-vaporizer", description: "Set exact temperature in degrees. Best for flavor chasers.", image: "https://placehold.co/400x280/3b82f6/white?text=PRECISE" },
+        { label: "Temp Presets", tags: "preset-temp-concentrate-vaporizer", description: "3-5 preset temperatures. Easy to use, good variety.", image: "https://placehold.co/400x280/8b5cf6/white?text=PRESETS" },
+        { label: "No Temp Control", tags: "no-temp-control-concentrate-vaporizer", description: "Fixed temperature. Simple and ready to use.", image: "https://placehold.co/400x280/64748b/white?text=NO+CONTROL" }
+      ]
+    },
+
+    // SHARED COIL QUESTION (Remove the old standalone one if it exists outside vaporizers)
+    {
+      q: "coil",
+      title: "Coil / Atomizer",
+      subtitle: "Choose your preferred heating element type.",
+      options: [
+        { label: "Any Coil", tags: "", description: "No coil preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+COIL" },
+        { label: "Coilless", tags: "no-coil-vaporizer", description: "Smooth surface with no exposed coil. Heats evenly, is easy to clean, and great for flavor.", image: "https://placehold.co/400x280/10b981/white?text=COILLESS" },
+        { label: "Quartz Cup", tags: "no-coil-quartz-cup-vaporizer", description: "Heats fast and delivers clean, terp-rich hits. Best for flavorful, low-temp sessions.", image: "https://placehold.co/400x280/f8fafc/64748b?text=QUARTZ+CUP" },
+        { label: "Ceramic Cup", tags: "no-coil-ceramic-cup-vaporizer", description: "Great for preserving taste with longer lasting and more even heat retention.", image: "https://placehold.co/400x280/f59e0b/white?text=CERAMIC+CUP" },
+        { label: "510 Cartridge Battery", tags: "510-cartridge-vaporizer", description: "Universal battery for threaded concentrate carts. Compact and easy to use.", image: "https://placehold.co/400x280/64748b/white?text=510+BATTERY" },
+        { label: "Quartz Coil", tags: "quartz-coil-atomizer-vaporizer", description: "Heats up quickly for powerful, tasty hits. Best for fast dabs.", image: "https://placehold.co/400x280/e5e7eb/475569?text=QUARTZ+COIL" },
+        { label: "Ceramic Coil", tags: "ceramic-coil-atomizer-vaporizer", description: "Even, low-temp heating for smooth hits and full flavor from concentrates.", image: "https://placehold.co/400x280/fbbf24/78716c?text=CERAMIC+COIL" }
+      ]
+    }
+  ],
+
+  "dab-rigs": [
+    {
+      q: "rig-size",
+      title: "Let's start with dab rig size.",
+      subtitle: "Dab rigs tend to be smaller than bongs to keep the oxygenation to a minimum. Oxygenation can ruin your rip.",
+      options: [
+        { label: "Any Size", tags: "dab rig", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "Mini", tags: "mini-dab-rig", description: "1-4.5\" inches", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/MiniDab2.png?v=1761338756" },
+        { label: "Small", tags: "small-dab-rig", description: "4.51”-7”", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/SmallDab2.png?v=1761338522" },
+        { label: "Medium", tags: "medium-dab-rig", description: "7.1”+", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/MediumDab.png?v=1761338357" }
+      ]
+    },
+    {
+      q: "dab-rig-type",
+      title: "Electric or Manual Dab Rig?",
+      subtitle: "Dab rigs come in manual (uses a torch to heat the dabbings surface) and electric (the surface is heated electronically). You can also put an electric bucket/nail on a manual dab rig. This question is specifically referring to the main body of the dab rig before any accessories are added.",
+      options: [
+        { label: "Any Type", tags: "dab rig", description: "No type preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+TYPE" },
+        { label: "Manual", tags: "manual-dab-rig", description: "Torch-heated using a torch or non E-nail heating device", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/manual_dab_rig.png?v=1761085060" },
+        { label: "Electric", tags: "electric-dab-rig", description: "Electronic heating surfaces & Electronic Nails.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/electric_dab_rig.gif?v=1761085066" }
+      ]
+    },
+    {
+      q: "dab-rig-material",
+      title: "Choose your preferred dab rig material.",
+      subtitle: "Material affects taste and durability.",
+      options: [
+        { label: "Any Material", tags: "dab rig", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+MATERIAL" },
+        { label: "Glass", tags: "glass-dab-rig", description: "A popular dab rig material, offering clean flavor and visibility. Easy to clean and available in artistic or scientific styles.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Glass1.png?v=1761235513" },
+        { label: "Borosilicate Glass", tags: "borosilicate-glass-dab-rig", description: "This glass is made with boron trioxide to fortify the glass into a stronger and more thermally resistant material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Borro1.png?v=1761235520" },
+        { label: "Silicone", tags: "silicone-dab-rig", description: "Nearly unbreakable and great for travel and rough environments. Easy to clean and lightweight.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Silicone1.png?v=1761235530" },
+        { label: "Glass and Silicone", tags: "glass-and-silicone-dab-rig", description: "Hybrid Combines clean glass hits with a durable silicone shell. Good balance of flavor and durability.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/GSHybrid1.png?v=1761235676" },
+        { label: "Platinum Cured", tags: "platinum-cured-dab-rig", description: "Extremely durable and lightweight metal. Heats quickly and retains heat well. May impart a slight metallic taste.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/PlattCure1.png?v=1761242873" },
+      ]
+    },
+    {
+      q: "dab-rig-style",
+      title: "Select your preferred dab rig style.",
+      subtitle: "What dab rig style do you prefer? Choose the design that fits your vibe—classic, recycler, incycler, sidecar, Fab Egg, or something bold and unique.",
+      options: [
+        { label: "Any Style", tags: "dab rig", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+STYLE" },
+        { label: "Natural", tags: "natural-downstem-dab-rig", description: "Built directly into the bong for durability and simplicity.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/naturalfixed_bong_downstem_6756f538-58c5-4570-bd3a-7638ca8b00f7.png?v=1761085146" },
+        { label: "Sidecar", tags: "sidecar-dab-rig", description: "Dab rigs with side-mounted necks that help reduce splashback.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sidecar_dabrig.png?v=1761085165" },
+        { label: "Standard Recycler", tags: "standard-recycler-dab-rig", description: "Features recycling water filtration for cooler, cleaner hits.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/standard_recycler_dab_rig.png?v=1761085210" },
+        { label: "Klein Recycler", tags: "klein-recycler-dab-rig", description: "Klein bottle design", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/klein_recycler_dab_rig.png?v=1761085244" },
+        { label: "Incycler", tags: "incycler-dab-rig", description: "Internal recycler dab rigs that recycle water within the chamber.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/incycler_dab_rig.png?v=1761085253" },
+        { label: "Nectar Collector", tags: "nectar-collector-dab-rig", description: "Portable vertical dab rigs for sipping concentrates like a straw.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/nectar_collector.png?v=1761085261" },
+        { label: "Fab Egg", tags: "fab-egg-dab-rig", description: "Egg-shaped rigs with intense percolation and artistic design.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fab_cone_dab_rig.png?v=1761086427" },
+        { label: "Turbine", tags: "turbine-dab-rig", description: "Enjoy the action of a powerful turbine forming a vortex of water.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/turbine_dab_rig.png?v=1761169735" },
+        { label: "Bloopcycler", tags: "bloopcycler-dab-rig", description: "Maximizes airflow and filtration for clean, potent, and satisfying hits.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bloopcycler_dab_rig.png?v=1761169746" },
+        { label: "Showerhead", tags: "showerhead-dab-rig", description: "A slitted disc resembling a showerhead for light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/showerhead_dab_rig.jpg?v=1761169761" },
+        { label: "Tree Armed", tags: "tree-arm-dab-rig", description: "Up to 30 slitted glass arms, much easier to clean when used for dabbing.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/tree_arm_dab_rig.png?v=1761230941" },
+        { label: "Triple Perc Recycler", tags: "triple-perc-recycler-dab-rig", description: "Combine the power of percolators with the function of a recycler.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/triple_perc_recycler_dab_rig.png?v=1761230965" },
+        { label: "Plasma Core", tags: "plasma-core-dab-rig", description: "Featuring a disc perc paired with a recycling orb for excellent diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/plasma_core_dab_rig.png?v=1761230978" },
+        { label: "Teapot Recycler", tags: "teapot-recycler-dab-rig", description: "A combination of a Klein recycler and a disc perc paired with stylish cones.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/teapot_recycler_dab_rig.png?v=1761230991" },
+        { label: "Pyrimid Recycler", tags: "pyrimid-recycler-dab-rig", description: "A conical slitted perc and an innovative recycler that optimizes air flow.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/pyramid_recycler_dab_rig.png?v=1761231001" },
+        { label: "Cascade Waterfall", tags: "cascade-waterfall-dab-rig", description: "A disc perc with lighting bolt slits coupled with a unique recycler.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cascade_waterfall_dab_rig.png?v=1761231010" },
+        { label: "Disc Perc", tags: "disc-perc-dab-rig", description: "A simple yet effective slitted disc for thorough and light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/disc_perc_dab_rig.png?v=1761231029" },
+        { label: "Hammer", tags: "hammer-dab-rig", description: "A slitted inset cup-style perc for light and crispy diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hammer_dab_rig.png?v=1761231043" },
+        { label: "Conical Globe", tags: "conical-globe-dab-rig", description: "A 10-hole conical perc with small holes for sharp diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/conical_globe_dab_rig.png?v=1761233157" },
+        { label: "Fab Cone", tags: "fab-cone-dab-rig", description: "A cone-shaped version of the classic fab egg to enhance vapor density.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fab_cone_dab_rig_5909c7d9-8cf3-4f69-8911-fd80fffda34a.png?v=1761233171" },
+        { label: "Bubble Cycler", tags: "bubble-cycler-dab-rig", description: "A combination of a sharp diffusor and a recycler for the best of both worlds.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bubble_cycler_dab_rig.png?v=1761233183" },
+        { label: "Gravity Ball Recycler", tags: "gravity-ball-recycler-dab-rig", description: "A combination of a gravity recycler and a slitted perc within an orb.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/gravity_ball_recycler_dab_rig.png?v=1761233195" },
+        { label: "Donut Hole Diffuser", tags: "donut-hole-diffuser-dab-rig", description: "A donut shaped perc that circulates the vapor within the donut.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/donut_hole_diffuser_dab_rig.png?v=1761233208" },
+        { label: "Vape Intake", tags: "vape-intake-dab-rig", description: "This special upside-down intake is meant to be used with a vape.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/vape_intake_dab_rig.png?v=1761233222" },
+        { label: "Seed of Life", tags: "seed-of-life-dab-rig", description: "Intricate cuts in the shape of 'the seed of life' geometry for excellent diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/seed_of_life_dab_rig.png?v=1761233237" },
+        { label: "Dome Perc", tags: "dome-perc-dab-rig", description: "A dome-shaped perc lined with slits at its base for a light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dome_perc_dab_rig.png?v=1761233259" },
+        { label: "Inline", tags: "inline-dab-rig", description: "A horizontal perc with slits for thorough but light diffusion.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/inline_perc_dab_rig.png?v=1761233270" },
+        { label: "Honey Comb", tags: "honey-comb-dab-rig", description: "A disc perc resembling a honeycomb with small holes for crisp rips.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honeycomb_perc_dab_rig.png?v=1761233296" },
+        { label: "Matrix", tags: "matrix-dab-rig", description: "A glass barrel with many small slits for a lighter but heavily filtered rip.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/matrix_perc_dab_rig.png?v=1761233306" },
+        { label: "Novelty", tags: "novelty-dab-rig", description: "Animals, fun shapes, wacky, kooky, and sometimes even spooky.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/novelty_dab_rig.png?v=1761233316" },
+        { label: "Glycerin Cooled", tags: "glycerin-cooled-perc-dab-rig", description: "The glycerin can be cooled in a freezer for chill rips without ice.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glycerin_cooled_dab_rig.png?v=1761233328" },
+        { label: "Beaker Bottom", tags: "beaker-bottom-dab-rig", description: "The classic bong shape, a conical base that is great for stability with a high-water capacity, but for dabs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Beaker_Bottom_12ff80e1-3c7b-47a7-8839-e67a39873fe3.png?v=1761233342" },
+        { label: "Double Uptake Recycler", tags: "double-uptake-recycler-dab-rig", description: "Features dual uptake tubes for enhanced water cycling and filtration.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/recycler_bong_perc_b85ac4b7-143b-4062-a96d-7544759bb935.png?v=1761233400" }
+      ]
+    },
+    {
+      q: "dab-rig-banger-material",
+      title: "Select your preferred bucket/nail material.",
+      subtitle: "What banger/nail material do you prefer for your dab rig? Choose the one that fits your needs for flavor, heat retention, and durability.",
+      options: [
+        { label: "Either", tags: "", description: "No material preference", image: "https://placehold.co/400x280/94a3b8/white?text=EITHER" },
+        { label: "Quartz Crystal", tags: "quartz-dab-banger", description: "Quartz can withstand direct flame without cracking making it ideal for bangers.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bucket.png?v=1761233708" },
+        { label: "Titanium", tags: "titanium-dab-nail", description: "Titanium nails are very sturdy, but lose heat quickly.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/nail.png?v=1761233717" }
+      ]
+    },
+    {
+      q: "banger-style",
+      title: "Select your preferred banger/bucket style.",
+      subtitle: "Which banger style do you prefer for your dab rig? Choose the one that fits your heat-up time, airflow, and dabbing style best.",
+      options: [
+        { label: "Any Banger", tags: "dab rig", description: "No banger preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+BANGER" },
+        { label: "Bucket", tags: "dab-bucket", description: "Deep quartz or glass bangers that hold more concentrates and distribute heat evenly.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bucket.png?v=1761233708" },
+        { label: "Titanium Nail", tags: "dab-titanium-nail", description: "Heated surfaces (usually titanium, quartz, or ceramic) used to vaporize dabs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/nail.png?v=1761233717" },
+        { label: "Terp Slurper", tags: "dab-terp-slurper", description: "Specialty banger designed to maximize flavor and efficiency with slits and slurping action.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/terp_slurper.png?v=1761233792" },
+        { label: "Recycler", tags: "dab-recycler", description: "Bangers with added airflow channels to mimic recycler water pipes.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/recycler_banger.png?v=1761233806" },
+        { label: "E-nail Banger", tags: "dab-enail-banger", description: "Bangers made for electronic nails to perfect fit and heat retention.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/enail.png?v=1761233976" },
+        { label: "Hybrid", tags: "dab-hybrid-banger", description: "A mixture of quartz and titanium for strength and flavor.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hybrid_banger.png?v=1761234083" },
+        { label: "Beehive", tags: "dab-beehive-banger", description: "A wide-based terp slurper with plenty of room for pearls and pillars.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/beehive_banger.png?v=1761234093" },
+        { label: "Fat Bottom", tags: "dab-fat-bottom-nail", description: "With an x-large base, these bangers are for large or multiple dab situations.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fat_bottom_banger.png?v=1761234101" },
+        { label: "Halo", tags: "dab-halo-banger", description: "A dish 5mm from the bottom of the banger and slits above the dish that draws airflow.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/halo.png?v=1761234112" },
+        { label: "Kettle", tags: "dab-kettle-banger", description: "A bulbous and spacious kettle-shaped base that can help prevent splashback.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/kettle.png?v=1761234121" },
+        { label: "Terp Blender", tags: "dab-terp-blender-banger", description: "The design promotes spiraling airflow, stirring concentrates as they vaporize.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/terp_blender.png?v=1761234252" },
+        { label: "Whirlwind", tags: "dab-whirlwind-banger", description: "2 tourbillon auto spinner holes for airflow and circulation.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/whirlwind.png?v=1761234304" },
+        { label: "Lowrider", tags: "dab-lowrider-banger", description: "A terp slurper with an extra tall bucket to fill with pearls.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/lowrider_banger.png?v=1761234316" },
+        { label: "Honeysuckle", tags: "dab-honeysuckle-banger", description: "A cylinder in the middle creates a vortex of airflow.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honeysuckle.png?v=1761234340" },
+        { label: "Core Reactor", tags: "dab-core-reactor-banger", description: "Core heating", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/core_reactor.png?v=1761234353" },
+        { label: "Honey Boiler", tags: "dab-honey-boiler-banger", description: "A tall tower keeps your concentrates from being pulled into the neck.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honey_boiler.png?v=1761234425" },
+        { label: "Honey Mug", tags: "dab-honey-mug-banger", description: "A flat bottom allows for temperature to rise evenly through the bottom.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honey_mug.png?v=1761234432" },
+        { label: "Sidecar", tags: "dab-sidecar-banger", description: "A sidecar-style offers an extra extension between you, the rig, and the hot banger.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/sidecar_banger.png?v=1761234442" },
+        { label: "Honey Disc", tags: "dab-honey-disc-banger", description: "With a spinning disc in the base and an outer diameter of 25mm for monster slabs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/honey_disc_banger.png?v=1761234452" },
+        { label: "Tornado", tags: "dab-tornado-banger", description: "With four strategically placed spinner vortex holes for a whirlwind of airflow.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/tornado_banger.png?v=1761234464" },
+        { label: "Control Tower", tags: "dab-control-tower-banger", description: "Long chamber for pearls and pillars with three air intakes for optimal airflow.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/control_tower_banger.png?v=1761234474" },
+        { label: "Double Banger", tags: "dab-double-banger", description: "Two-chamber bangers for taking back-to-back hits or mixing concentrates.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/double_banger.png?v=1761234498" },
+        { label: "Splash Guard Hammer", tags: "dab-splash-guard-hammer-banger", description: "The splash guard effectively prevents splashes from entering the neck of your rig.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/splashguard_hammer.png?v=1761234509" },
+        { label: "Hourglass Terp Slurper", tags: "dab-hourglass-terp-slurper-banger", description: "Designed with an hourglass silhouette for enhanced heat retention.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hourglass_terp_slurper.png?v=1761234517" },
+        { label: "Terp Bubbler Slurper", tags: "dab-terp-bubbler-slurper-banger", description: "Dish-like bottom with slits and a bubble chamber for improved circulation.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/terp_bubbler_slurper_banger.png?v=1761234544" },
+        { label: "Round Bottom", tags: "dab-round-bottom-banger", description: "A rounded bottom allows for quick heating and easy cleaning.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/round_bottom_banger.png?v=1761234573" },
+        { label: "Roundbottom Deep Bucket", tags: "dab-roundbottom-deep-bucket-banger", description: "A deep bucket with a rounded bottom for enhanced heat retention and easier cleaning.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/round_bottom_deep_bucket.png?v=1761234586" }
+      ]
+    },
+    {
+      q: "dab-rig-joint-style",
+      title: "Choose your preferred joint style for your dab rig.",
+      subtitle: "Joint styles come in 'male' and 'female'. Female joints are the most common style and require male bangers. Male joints require female bangers.",
+      options: [
+        { label: "Either Joint Style", tags: "", description: "No style preference", image: "https://placehold.co/400x280/94a3b8/white?text=EITHER" },
+        { label: "Male Joint", tags: "Pole", description: "Requires female bangers", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/maleJoint.png?v=1761340792" },
+        { label: "Female Joint", tags: "Hole", description: "Requires male bangers", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/10joint.png?v=1761340666" }
+      ]
+    },
+    {
+      q: "dab-rig-joint-size",
+      title: "Choose your preferred joint size for your dab rig.",
+      subtitle: "The joint size refers to the size of the hole that secures the banger or bucket. We measure them in millimeters.",
+      options: [
+        { label: "Any Joint Size", tags: "dab rig", description: "No size preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+SIZE" },
+        { label: "10mm", tags: "10mm", description: "Small", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/10joint.png?v=1761340666" },
+        { label: "14mm", tags: "14mm", description: "Standard", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/14joint.png?v=1761340666" },
+        { label: "18mm", tags: "18mm", description: "Oversized", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/18joint.png?v=1761340666" }
+      ]
+    }
+  ],
+  // questions.js - PART 2 OF 2
+  // APPEND THIS TO THE END OF PART 1
+
+  "accessories": [
+  //  {
+  //    q: "accessory-herb-type",
+  //    title: "Choose Your Accessory Type",
+   //   subtitle: "Which type of herb accessories are you looking for?",
+   //   options: [
+   //     { label: "Dry-Herb Accessories", tags: "dry,accessories", description: "Accessories for bongs, bubblers, pipes, and dry-herb vaporizers", image: "https://placehold.co/400x280/3b82f6/white?text=DRY+ACC" },
+    //    { label: "Concentrated-Herb Accessories", tags: "concentrated,accessories", description: "Accessories for dab rigs and concentrate vaporizers", image: "https://placehold.co/400x280/f59e0b/white?text=CONC+ACC" }
+   //   ]
+  //  },
+    {
+      q: "dry-accessory-category",
+      title: "Select Product Category",
+      subtitle: "Which dry-herb product do you need accessories for?",
+      dependsOn: { q: "accessory-herb-type", value: "dry-herb-accessories" },
+      options: [
+        { label: "Bong Accessories", tags: "bongs,accessories", description: "Cleaners, cases, storage, and more for bongs", image: "https://placehold.co/400x280/4f46e5/white?text=BONG+ACC" },
+        { label: "Bubbler Accessories", tags: "bubblers,accessories", description: "Cleaners, cases, and storage for bubblers", image: "https://placehold.co/400x280/8b5cf6/white?text=BUBBLER+ACC" },
+        { label: "Pipe Accessories", tags: "pipes,accessories", description: "Cleaners, cases, and storage for pipes", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/PipeAcc.png?v=1761252970" },
+        { label: "Dry-Herb Vaporizer Accessories", tags: "vaporizers,dry,accessories", description: "Cleaning and storage for dry-herb vapes", image: "https://placehold.co/400x280/ec4899/white?text=VAPE+ACC" }
+      ]
+    },
+    {
+      q: "conc-accessory-category",
+      title: "Select Product Category",
+      subtitle: "Which concentrated-herb product do you need accessories for?",
+      dependsOn: { q: "accessory-herb-type", value: "concentrated-herb-accessories" },
+      options: [
+        { label: "Dab Rig Accessories", tags: "dab rig,accessories", description: "Full range of dab rig accessories and tools", image: "https://placehold.co/400x280/f59e0b/white?text=DAB+ACC" },
+        { label: "Concentrate Vaporizer Accessories", tags: "vaporizers,concentrated,accessories", description: "Cleaning and storage for concentrate vapes", image: "https://placehold.co/400x280/10b981/white?text=VAPE+ACC" }
+      ]
+    },
+    {
+      q: "bong-accessory-type",
+      title: "Bong Accessory Type",
+      subtitle: "What type of bong accessory are you looking for?",
+      dependsOn: { q: "dry-accessory-category", value: "bong-accessories" },
+      options: [
+        { label: "Any Type", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Bong Glass Cleaner", tags: "glass-cleaner,bongs", description: "Special formula for removing resin and buildup from glass bongs, leaving them sparkling clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bong_cleaner.png?v=1761592904" },
+        { label: "Silicone Bong Cleaner", tags: "silicone-cleaner,bongs", description: "Specially formulated for silicone bongs to be strong without degrading the material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/silicone_cleaner.png?v=1761592968" },
+        { label: "Scrub Brushes", tags: "scrub-brush,bongs", description: "Handheld brushes used to scrub inside hard-to-reach areas of bongs and bong accessories.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cleaning_brushes.png?v=1761592979" },
+        { label: "Smell-Proof Cases", tags: "smell-proof-case,bongs", description: "Cases designed to lock in herbaceous odors, keeping your gear discreet and travel-ready.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/smell_proof_dry_herb_container.png?v=1761592994" },
+        { label: "Hard Cases", tags: "hard-case,bongs", description: "Protective cases with rigid shells to keep your bong and gear safe from impact.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hard_case_for_bongs.png?v=1761593009" },
+        { label: "Soft Cases", tags: "soft-case,bongs", description: "Padded, flexible cases for lightweight bong protection and easy transport.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/soft_cases_for_bongs.png?v=1761593031" },
+        { label: "Locking Cases", tags: "locking-case,bongs", description: "Secure cases with locks or locking mechanisms to protect your piece from unauthorized access.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/locking_cases_for_bongs.png?v=1761593042" },
+        { label: "Waterproof Cases", tags: "waterproof-case,bongs", description: "Water-tight cases that protect bongs and accessories from water damage.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/waterproof_cases_for_bongs.png?v=1761593061" },
+        { label: "Clips", tags: "clips,bongs", description: "Clips or retainers that secure downstems or accessories and prevent slipping.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/clips_for_bongs.png?v=1761593075" },
+        { label: "Herb Jars", tags: "herb-jar,storage", description: "Storage jars for keeping your dry herbs fresh, often airtight, reusable, and UV-blocking.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dry_herb_jars.png?v=1761593084" },
+        { label: "Bowl Piece Screens", tags: "screens,bowl-piece", description: "Mesh or metal screens that sit in your bowl piece to prevent herbs from pulling through.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bowl_piece_screens.png?v=1761593100" },
+        { label: "Smell-Proof Dry Herb Container", tags: "smell-proof-container,dry-herb-storage", description: "Sealed container that blocks odor to store herbs discreetly.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/stainless_steel_dry_herb_container.png?v=1761593204" },
+        { label: "Vacuum Dry Herb Container", tags: "vacuum-container,dry-herb-storage", description: "Air-tight vacuum-sealed jar that keeps herb extra fresh by removing the oxygen.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/vaccum_dry_herb_container.png?v=1761593124" },
+        { label: "UV-Blocking Dry Herb Container", tags: "uv-blocking-container,dry-herb-storage", description: "Protects herbs from UV light to preserve freshness and potency.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/uv_blocking_dry_herb_container.png?v=1761593134" },
+        { label: "Child-Resistant Dry Herb Container", tags: "child-resistant-container,dry-herb-storage", description: "Designed to help prevent children from accessing stored herbs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/child_resistant_dry_herb_container.png?v=1761593146" },
+        { label: "Glass Dry Herb Container", tags: "glass-container,dry-herb-storage", description: "Classic glass jars for dry herb storage.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glass_dry_herb_container.png?v=1761593158" },
+        { label: "Plastic Dry Herb Container", tags: "plastic-container,dry-herb-storage", description: "Lightweight and affordable option for storing herbs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/plastic_dry_herb_container.png?v=1761593175" },
+        { label: "Ceramic Dry Herb Container", tags: "ceramic-container,dry-herb-storage", description: "Stylish and artistic containers for your herbs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/ceramic_dry_herb_container.png?v=1761593167" },
+        { label: "Marble Dry Herb Container", tags: "marble-container,dry-herb-storage", description: "Heavy and elegant storage containers.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/marble_dry_herb_container.png?v=1761593187" },
+        { label: "Aluminum Dry Herb Container", tags: "aluminum-container,dry-herb-storage", description: "Durable and lightweight with a sleek finish and odor protection.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/aluminum_dry_herb_container.png?v=1761593197" },
+        { label: "Stainless Steel Dry Herb Container", tags: "stainless-steel-container,dry-herb-storage", description: "Strong, sleek container that resists odor, moisture, and damage.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/stainless_steel_dry_herb_container.png?v=1761593204" }
+      ]
+    },
+    {
+      q: "bubbler-accessory-type",
+      title: "Bubbler Accessory Type",
+      subtitle: "What type of bubbler accessory are you looking for?",
+      dependsOn: { q: "dry-accessory-category", value: "bubbler-accessories" },
+      options: [
+        { label: "Any Type", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Glass Cleaners", tags: "glass-cleaner,bubblers", description: "Special formula for removing resin and buildup from glass bubblers, leaving them sparkling clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bong_cleaner.png?v=1761592904" },
+        { label: "Silicone Cleaners", tags: "silicone-cleaner,bubblers", description: "Specially formulated for silicone bubblers to be strong without degrading the material.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/silicone_cleaner.png?v=1761592968" },
+        { label: "Scrub Brushes", tags: "scrub-brush,bubblers", description: "Reach tight spots inside bubblers to scrub away resin and keep airflow clean.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cleaning_brushes.png?v=1761592979" },
+        { label: "Soft Cases", tags: "soft-case,bubblers", description: "Lightweight padded cases that protect your bubbler from scratches and bumps during transport.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/soft_cases_for_bongs.png?v=1761593031" },
+        { label: "Hard Cases", tags: "hard-case,bubblers", description: "Rigid cases offering solid protection for your bubbler during travel or storage.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hard_cases_for_bubblers.jpg?v=1761601258" },
+        { label: "Smell-Proof Cases", tags: "smell-proof-case,bubblers", description: "Sealed and odor-blocking cases that keep your bubbler scent-free.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/smell_proof_cases_for_bubblers.png?v=1761601285" },
+        { label: "Locking Cases", tags: "locking-case,bubblers", description: "Secure cases with locks to protect your bubbler and accessories from unwanted access.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/locking_cases_for_bubblers.png?v=1761601294" }
+      ]
+    },
+    {
+      q: "pipe-accessory-type",
+      title: "Pipe Accessory Type",
+      subtitle: "What type of pipe accessory are you looking for?",
+      dependsOn: { q: "dry-accessory-category", value: "pipe-accessories" },
+      options: [
+        { label: "Any Type", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Glass Cleaners", tags: "glass-cleaner,pipes", description: "Removes resin and stains from glass pipes for a clean, fresh-tasting session.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bong_cleaner.png?v=1761592904" },
+        { label: "Silicone Cleaners", tags: "silicone-cleaner,pipes", description: "Safe formula made to clean silicone pipes without damaging material or color.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/silicone_cleaner.png?v=1761592968" },
+        { label: "Wood Cleaners", tags: "wood-cleaner,pipes", description: "Gentle cleaners that preserve wood finish while removing tar and buildup.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/wood_cleaner.png?v=1761601407" },
+        { label: "Hard Cases", tags: "hard-case,pipes", description: "Rigid padded cases for protecting your pipe from scratches and impact.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hard_case_for_pipe.png?v=1761601420" },
+        { label: "Soft Cases", tags: "soft-case,pipes", description: "Lightweight padded cases for protecting your pipe during travel.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/soft_cases_for_pipes.jpg?v=1761601449" },
+        { label: "Smell-Proof Cases", tags: "smell-proof-case,pipes", description: "Odor-blocking cases to keep your pipe and herbs discreet and fresh.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/smell_proof_cases_for_pipes.png?v=1761601472" },
+        { label: "Scrub Brushes", tags: "scrub-brush,pipes", description: "Handy tools for cleaning hard-to-reach spots in pipes, stems, and bowls.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cleaning_brushes_fae72b6c-fc37-45a8-8249-591d68edb06f.png?v=1761601683" }
+      ]
+    },
+    {
+      q: "dry-vape-accessory-type",
+      title: "Dry-Herb Vaporizer Accessory Type",
+      subtitle: "What type of vaporizer accessory are you looking for?",
+      dependsOn: { q: "dry-accessory-category", value: "dry-herb-vaporizer-accessories" },
+      options: [
+        { label: "Any Type", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Cleaning Solutions", tags: "cleaning-solution,vaporizers,dry", description: "Specially formulated liquids to dissolve resin and buildup in vaporizer chambers and parts.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bong_cleaner.png?v=1761592904" },
+        { label: "Scrub Brushes", tags: "scrub-brush,vaporizers,dry", description: "Small brushes for vape chambers", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cleaning_brushes.png?v=1761592979" },
+        { label: "Soft Cases", tags: "soft-case,vaporizers,dry", description: "Lightweight, padded cases for safely carrying your vaporizer and small accessories.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hard_cases_for_dry_herb_vaporizers.png?v=1761602562" },
+        { label: "Hard Cases", tags: "hard-case,vaporizers,dry", description: "Rigid protective cases that shield your vaporizer from drops, bumps, and impact.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hard_cases_for_dry_herb_vaporizers.png?v=1761602562" },
+        { label: "Smell-Proof Cases", tags: "smell-proof-case,vaporizers,dry", description: "Odor-blocking cases that keep your vaporizer and herb discreet and travel-ready.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/smell_proof_cases_dry_herb_vaporizers.png?v=1761602615" }
+      ]
+    },
+    {
+      q: "dab-rig-accessory-type",
+      title: "Dab Rig Accessory Type",
+      subtitle: "What type of dab rig accessory are you looking for?",
+      dependsOn: { q: "conc-accessory-category", value: "dab-rig-accessories" },
+      options: [
+        { label: "Any Type", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Glass Cleaner", tags: "glass-cleaner,dab-rig", description: "Formulated to remove sticky resin from glassware.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bong_cleaner.png?v=1761592904" },
+        { label: "Silicone Cleaner", tags: "silicone-cleaner,dab-rig", description: "Special cleaner for silicone rigs and accessories.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/silicone_cleaner.png?v=1761592968" },
+        { label: "Cleaning Swabs", tags: "cleaning-swabs,dab-rig", description: "Cotton or foam-tipped swabs for cleaning bangers and nails.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cleaning_swabs_for_dabs.png?v=1761602817" },
+        { label: "Soft Cases", tags: "soft-case,dab-rig", description: "Padded pouches to protect your gear while traveling. Not impact resistant.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/soft_cases_for_dab_rigs.png?v=1761602897" },
+        { label: "Hard Cases", tags: "hard-case,dab-rig", description: "Rugged cases for transporting your dab gear safely. Impact resistant.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hard_cases_for_dab_rigs.png?v=1761602904" },
+        { label: "Smell-Proof Cases", tags: "smell-proof-case,dab-rig", description: "Cases with an odor-proof seal for discretion and privacy.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/smell_proof_cases_for_dab_rigs.png?v=1761602946" },
+        { label: "Locking Cases", tags: "locking-case,dab-rig", description: "Secure storage cases with locks or locking mechanisms.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/locking_cases_for_dab_rigs.png?v=1761602953" },
+        { label: "Accessory Stands", tags: "stand,dab-rig", description: "Stands and trays for organizing tools, caps, and pearls neatly.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/accessory_stands_for_dab_rigs.png?v=1761602985" },
+        { label: "Carb Cap", tags: "carb-cap,dab-rig", description: "Covers placed on bangers to trap heat and control airflow.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/carb_caps.png?v=1761602993" },
+        { label: "Terp Pearls", tags: "terp-pearls,dab-rig", description: "Small balls that spin inside bangers for even concentrate vaporization.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/terp_pearls.png?v=1761603032" },
+        { label: "Dab Inserts", tags: "dab-insert,dab-rig", description: "Removable cups, pills, and objects that sit in bangers for easy cleanup and heat control.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dab_inserts_not_terp_pearls.png?v=1761603033" },
+        { label: "Reclaim Catcher", tags: "reclaim-catcher,dab-rig", description: "Attachment that collects unused concentrates before reaching the rig. This helps to keep the water as clean as possible.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/reclaim_catcher.png?v=1761603039" },
+        { label: "Dropdowns", tags: "dropdown,dab-rig", description: "Glass connectors that offset the banger to prevent heat stress on rigs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/glass_drop_down.png?v=1761603049" },
+        { label: "Dab Cups", tags: "dab-cup,dab-rig", description: "Removable cups that sit in bangers for easy cleanup and heat control.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dab_cups.png?v=1761603061" },
+        { label: "Dab Tools", tags: "dab-tool,dab-rig", description: "Tools made of metal or glass used to safely handle concentrates.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dab_tools.png?v=1761603076" },
+        { label: "Cleaning Station", tags: "cleaning-station,dab-rig", description: "A station for holding and cleaning dab tools and accessories.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cleaning_station.png?v=1761603085" },
+        { label: "Dab Torches", tags: "torch,dab-rig", description: "Handheld butane torches used to heat manual dab rigs.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dab_torches.png?v=1761603094" },
+        { label: "Wax Container", tags: "wax-container,concentrate-storage", description: "Non-stick, typically food-grade containers to store and transport concentrates.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/wax_container.png?v=1761603104" },
+        { label: "Dab Mats", tags: "dab-mat,dab-rig", description: "Protective mats to keep surfaces clean during dabbing sessions.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dab_mats.png?v=1761603112" }
+      ]
+    },
+    {
+      q: "conc-vape-accessory-type",
+      title: "Concentrate Vaporizer Accessory Type",
+      subtitle: "What type of concentrate vaporizer accessory are you looking for?",
+      dependsOn: { q: "conc-accessory-category", value: "concentrate-vaporizer-accessories" },
+      options: [
+        { label: "Any Type", tags: "", description: "No preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY" },
+        { label: "Cleaning Solutions", tags: "cleaning-solution,vaporizers,concentrated", description: "Cleaning Solutions – Breaks down sticky concentrate residue for a clean, smooth-tasting vape experience.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bong_cleaner.png?v=1761592904" },
+        { label: "Scrub Brushes", tags: "scrub-brush,vaporizers,concentrated", description: "Small, firm brushes for cleaning atomizers and chambers without damaging parts.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cleaning_brushes.png?v=1761592979" },
+        { label: "Soft Cases", tags: "soft-case,vaporizers,concentrated", description: "Lightweight, padded cases for safe and easy transport of your vaporizer and tools.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/soft_cases_for_concentrated_herb_vaporizers.png?v=1761603347" },
+        { label: "Hard Cases", tags: "hard-case,vaporizers,concentrated", description: "Rigid cases that protect your vaporizer and accessories from impact.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/hard_cases_for_concentrated_herb_vaporizers.png?v=1761603362" },
+        { label: "Smell-Proof Cases", tags: "smell-proof-case,vaporizers,concentrated", description: "Odor-locking cases to keep your vaporizer and concentrates discreet and fresh.", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/smell_proof_cases_for_concentrated_herb_vaporizers.png?v=1761603375" }
+      ]
+    }
+  ]
+};
+
+  // Define STYLE_DEFS - Style filtering options
+  window.STYLE_DEFS = {
+  color: [
+    { label: "No Color", tags: "", description: "No color preference", image: "https://placehold.co/400x280/94a3b8/white?text=ANY+COLOR" },
+    { label: "red", tags: "", description: "Bold red tones", image: "https://placehold.co/400x280/dc2626/white?text=RED" },
+    { label: "black", tags: "", description: "Sleek black finish", image: "https://placehold.co/400x280/1f2937/white?text=BLACK" },
+    { label: "blue", tags: "", description: "Cool blue shades", image: "https://placehold.co/400x280/3b82f6/white?text=BLUE" },
+    { label: "green", tags: "", description: "Natural green hues", image: "https://placehold.co/400x280/16a34a/white?text=GREEN" },
+    { label: "white", tags: "", description: "Clean white look", image: "https://placehold.co/400x280/f8fafc/475569?text=WHITE" },
+    { label: "pink", tags: "", description: "Vibrant pink colors", image: "https://placehold.co/400x280/ec4899/white?text=PINK" },
+    { label: "yellow", tags: "", description: "Bright yellow tones", image: "https://placehold.co/400x280/eab308/white?text=YELLOW" },
+    { label: "purple", tags: "", description: "Royal purple shades", image: "https://placehold.co/400x280/8b5cf6/white?text=PURPLE" },
+    { label: "gold", tags: "", description: "Luxe gold accents", image: "https://placehold.co/400x280/f59e0b/white?text=GOLD" },
+    { label: "orange", tags: "", description: "Warm orange hues", image: "https://placehold.co/400x280/f97316/white?text=ORANGE" },
+    { label: "silver", tags: "", description: "Metallic silver", image: "https://placehold.co/400x280/94a3b8/white?text=SILVER" },
+    { label: "teal", tags: "", description: "Cool teal colors", image: "https://placehold.co/400x280/14b8a6/white?text=TEAL" },
+    { label: "brown", tags: "", description: "Natural brown tones", image: "https://placehold.co/400x280/92400e/white?text=BROWN" },
+    { label: "gray", tags: "", description: "Neutral gray shades", image: "https://placehold.co/400x280/64748b/white?text=GRAY" },
+    { label: "color changing", tags: "", description: "Heat-reactive glass", image: "https://placehold.co/400x280/gradient?text=COLOR+CHANGING" }
+  ],
+  animal: [
+    { label: "cat", tags: "cat", description: "Feline designs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/cat.png?v=1761336479" },
+    { label: "owl", tags: "owl", description: "Wise owl motifs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/owl.png?v=1761335991" },
+    { label: "bear", tags: "bear", description: "Bear-themed", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bears.png?v=1761336510" },
+    { label: "fish", tags: "fish", description: "Aquatic fish designs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fish.png?v=1761336521" },
+    { label: "dragon", tags: "dragon", description: "Mythical dragon art", image: "https://placehold.co/400x280/dc2626/white?text=DRAGON" },
+    { label: "lion", tags: "lion", description: "Majestic lion themes", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/lion.png?v=1761336548" },
+    { label: "horse", tags: "horse", description: "Equine designs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/horse.png?v=1761336558" },
+    { label: "dog", tags: "dog", description: "Canine motifs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dog.png?v=1761336566" },
+    { label: "tiger", tags: "tiger", description: "Tiger patterns", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/tiger.png?v=1761336575" },
+    { label: "dolphin", tags: "dolphin", description: "Playful dolphin art", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/dolphin.png?v=1761336585" },
+    { label: "elephant", tags: "elephant", description: "Elephant designs", image: "https://placehold.co/400x280/94a3b8/white?text=ELEPHANT" },
+    { label: "Peacock", tags: "peacock", description: "Peacock motifs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/peacock.png?v=1761336021" },
+    { label: "Crabs", tags: "crabs", description: "Crab-themed", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/crab.png?v=1761335943" },
+
+  ],
+  food: [
+    { label: "candy", description: "Sweet candy themes", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/candy.png?v=1761603736" },
+    { label: "cookie", description: "Cookie designs", image: "https://https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fortune_cookie_0e530d72-63da-47a3-9711-daaeaad1ffbf.png?v=1761603749" },
+    { label: "fortune cookie", description: "Fortune cookie designs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fortune_cookie.png?v=1761335973" },
+    { label: "donut", description: "Donut-inspired", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/donut_hole_diffuser_dab_rig_ea3af0b5-32df-4452-b941-2faa5efbef60.png?v=1761603760" },
+    { label: "fruit", description: "Fresh fruit motifs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fruits.png?v=1761603781" },
+    { label: "cake", description: "Cake-themed", image: "https://placehold.co/400x280/ec4899/white?text=CAKE" },
+    { label: "pizza", description: "Pizza slice designs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/pizza.png?v=1761603798" },
+    { label: "burger", description: "Burger-inspired", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/burgers.png?v=1761603808" },
+    { label: "vegetable", description: "Veggie themes", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/vegetables.png?v=1761603900" },
+    { label: "ice cream", description: "Ice cream designs", image: "https://placehold.co/400x280/8b5cf6/white?text=ICE+CREAM" },
+    { label: "taco", description: "Taco-themed", image: "https://placehold.co/400x280/eab308/white?text=TACO" },
+    { label: "Pumpkin", description: "Pumpkin motifs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/pumpkin.png?v=1761336040" },
+    { label: "Avocado", description: "Avocado designs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/avocado.png?v=1761335961" }
+    
+  ],
+  pattern: [
+    { label: "check", description: "Checkered patterns", image: "https://placehold.co/400x280/1f2937/white?text=CHECKERED" },
+    { label: "swirl", description: "Swirling designs", image: "https://placehold.co/400x280/8b5cf6/white?text=SWIRL" },
+    { label: "stripe", description: "Striped patterns", image: "https://placehold.co/400x280/3b82f6/white?text=STRIPE" },
+    { label: "spiral", description: "Spiral motifs", image: "https://placehold.co/400x280/7c3aed/white?text=SPIRAL" },
+    { label: "camouflage", description: "Camo patterns", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/camoflauge_37286e19-7951-458a-85b9-b73e3fa017f1.jpg?v=1761604239" },
+    { label: "dot", description: "Dotted designs", image: "https://placehold.co/400x280/ec4899/white?text=DOTS" },
+    { label: "polka", description: "Polka dot patterns", image: "https://placehold.co/400x280/f59e0b/white?text=POLKA" }
+  ],
+  plant: [
+    { label: "herb", description: "Herb designs", image: "https://placehold.co/400x280/16a34a/white?text=HERB" },
+    { label: "flower", description: "Floral patterns", image: "https://placehold.co/400x280/ec4899/white?text=FLOWER" },
+    { label: "mushroom", description: "Mushroom motifs", image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/mushroom_concentrated_herb_vaporizer_addon.png?v=1761604103" },
+    { label: "rose", description: "Rose designs", image: "https://placehold.co/400x280/be123c/white?text=ROSE" },
+    { label: "bud", description: "Bud-themed", image: "https://placehold.co/400x280/10b981/white?text=BUD" },
+    { label: "tree", description: "Tree patterns", image: "https://placehold.co/400x280/92400e/white?text=TREE" },
+    { label: "leaf", description: "Leaf designs", image: "https://placehold.co/400x280/16a34a/white?text=LEAF" },
+    { label: "cactus", description: "Cactus motifs", image: "https://placehold.co/400x280/10b981/white?text=CACTUS" },
+    { label: "vine", description: "Vine patterns", image: "https://placehold.co/400x280/059669/white?text=VINE" },
+    { label: "fern", description: "Fern designs", image: "https://placehold.co/400x280/14b8a6/white?text=FERN" }
+  ],
+  theme: [
+    { label: "420", description: "420 culture themes", image: "https://placehold.co/400x280/16a34a/white?text=420" },
+    { label: "party", description: "Party vibes", image: "https://placehold.co/400x280/ec4899/white?text=PARTY" },
+    { label: "halloween", description: "Spooky designs", image: "https://placehold.co/400x280/f97316/white?text=HALLOWEEN" },
+    { label: "holiday", description: "Festive themes", image: "https://placehold.co/400x280/dc2626/white?text=HOLIDAY" },
+    { label: "cosmic", description: "Space-themed", image: "https://placehold.co/400x280/7c3aed/white?text=COSMIC" },
+    { label: "alien", description: "Extraterrestrial art", image: "https://placehold.co/400x280/10b981/white?text=ALIEN" },
+    { label: "galaxy", description: "Galaxy patterns", image: "https://placehold.co/400x280/8b5cf6/white?text=GALAXY" },
+    { label: "festival", description: "Festival vibes", image: "https://placehold.co/400x280/gradient?text=FESTIVAL" },
+    { label: "beach", description: "Beach themes", image: "https://placehold.co/400x280/06b6d4/white?text=BEACH" },
+    { label: "christmas", description: "Holiday cheer", image: "https://placehold.co/400x280/dc2626/white?text=CHRISTMAS" }
+  ]
+};
+
+  function normalizeTag(raw) {
+    if (!raw) return null;
+    let t = String(raw).toLowerCase().trim();
+    t = t.replace(/\s*-\s*/g, " ");
+    t = t.replace(/\b(\d+)\s*mm\b/, "$1mm");
+    t = t.replace(/\bhoney\s+comb\b/, "honeycomb");
+    t = t.replace(/\bpen\s*style\b/, "pen style");
+    if (/\bmouth\s*piece\b/.test(t)) t = "mouthpiece";
+    if (CANONICALS.includes(t)) return t;
+    for (const [canon, vars] of Object.entries(TAG_SYNONYMS)) {
+      if (t === canon || vars.includes(t)) return canon;
+    }
+    return t;
+  }
+
+  function splitTags(str) {
+    const arr = String(str || "").split(/[,;|]/).map(s => s.trim()).filter(Boolean);
+    const out = new Set();
+    arr.forEach(x => {
+      const n = normalizeTag(x);
+      if (n) out.add(n);
+    });
+    return Array.from(out);
+  }
+
+  function bestHeader(headers, candidates) {
+    const lower = headers.map(h => String(h || "").trim().toLowerCase());
+    for (const cand of candidates) {
+      const lc = cand.toLowerCase();
+      const idx = lower.indexOf(lc);
+      if (idx !== -1) return headers[idx];
+    }
+    for (const cand of candidates) {
+      const lc = cand.toLowerCase();
+      for (let i = 0; i < lower.length; i++) {
+        if (lower[i].includes(lc)) return headers[i];
+      }
+    }
+    return null;
+  }
+
+  function processCSV(results) {
+    const rows = results.data || [];
+    state.headers = results.meta.fields || [];
+    if (!rows.length) return;
+
+    const titleCol = bestHeader(state.headers, ["Title", "Product Title", "name"]);
+    const tagsCol = bestHeader(state.headers, ["Tags", "tags"]);
+    const handleCol = bestHeader(state.headers, ["Handle", "handle"]);
+    const imageCol = bestHeader(state.headers, ["Image Src", "Image URL", "Image"]);
+    const priceCol = bestHeader(state.headers, ["Variant Price", "Price"]);
+    const publishedCol = bestHeader(state.headers, ["Published"]);
+    const statusCol = bestHeader(state.headers, ["Status"]);
+    const typeCol = bestHeader(state.headers, ["Type", "Product Type"]);
+
+    state.products = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const title = String(r[titleCol] || "").trim();
+      if (!title) continue;
+
+      const tagsRaw = String(r[tagsCol] || "");
+      const handle = String(r[handleCol] || "").trim();
+      const image = String(r[imageCol] || "").trim();
+      const price = String(r[priceCol] || "").trim();
+      const published = String(r[publishedCol] || "").toLowerCase();
+      const status = String(r[statusCol] || "").toLowerCase();
+      const type = String(r[typeCol] || "").trim();
+
+      const available = (published === "true" || published === "active") && (status === "active" || status === "true");
+      const url = handle ? `/products/${handle}` : "#";
+      const tags = splitTags(tagsRaw);
+      const typeNorm = normalizeTag(type);
+      if (typeNorm) tags.push(typeNorm);
+
+      state.products.push({
+        title,
+        tags: new Set(tags),
+        url,
+        image,
+        type,
+        price,
+        available
+      });
+    }
+
+    $("loadStatus").innerHTML = `Loaded ${state.products.length} products`;
+    $("headerStatus").textContent = `${state.products.filter(p => p.available).length} active`;
+  }
+
+  function shouldShowQuestion(question) {
+    if (!question.dependsOn) return true;
+    
+    const depQ = question.dependsOn.q;
+    const depVal = Array.isArray(question.dependsOn.value) ? question.dependsOn.value : [question.dependsOn.value];
+    
+    const currentSelection = state.selections[depQ];
+    const currentValues = currentSelection?.values || [];
+
+    if (question.q === "ash-catcher-type" || question.q === "ash-catcher-material") {
+      return (state.selections["add-ons"]?.values || []).includes("ash catcher");
+    }
+
+    return depVal.some(val => currentValues.includes(val));
+  }
+
+  function buildQuestionFlow() {
+    const flow = [];
+    
+    flow.push({
+      q: "primary-type",
+      title: "Dry or Concentrated?",
+      subtitle: "Select all that apply to your desired usage (e.g., both dry and concentrated).", 
+      options: [
+        { 
+          label: "DRY", 
+          value: "dry",
+          tags: "dry", 
+          description: "Includes bongs, bubblers, pipes, and dry-herb vaporizers.",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Nug1.png?v=1761058611"
+        },
+        { 
+          label: "CONCENTRATED", 
+          value: "concentrated",
+          tags: "concentrated", 
+          description: "Dab rigs, nectar collectors, and concentrated-herb vaporizers",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Wax1.png?v=1761058804"
+        }
+      ]
+    });
+
+    const primaryTypes = state.selections["primary-type"]?.values || [];
+    const addedQuestions = new Set(); 
+    
+    if (primaryTypes.includes("dry")) {
+      flow.push({
+        q: "dry-category",
+        title: "Dry-Herb Product Selection",
+        subtitle: "Select the dry herb product(s) you are interested in.",
+        options: [
+          { 
+            label: "Bongs", 
+            value: "bongs",
+            tags: "bongs",
+            description: "Water pipes that use diffusion to cool and filter smoke",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bongs.png?v=1761058977"
+          },
+          { 
+            label: "Pipes", 
+            value: "pipes",
+            tags: "pipes",
+            description: "Simple, portable tools for smoking dry herb",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Pipes.png?v=1761059128"
+          },
+          { 
+            label: "Bubblers", 
+            value: "bubblers",
+            tags: "bubblers",
+            description: "Compact hybrids of pipes and bongs",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Bubblers.png?v=1761059168"
+          },
+          { 
+            label: "Vaporizers", 
+            value: "vaporizers",
+            tags: "vaporizers,dry",
+            description: "Devices that heat dry herb without burning it",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Dry-Herb_Vaporizer.png?v=1761059274"
+          },
+          {
+            label: "Accessories",
+            value: "dry-herb-accessories",
+            tags: "dry,accessories",
+            description: "Add-ons, cleaners, etc.",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Accessories1.png?v=1761059052"
+          }
+        ]
+      });
+
+      const dryCategories = state.selections["dry-category"]?.values || [];
+      
+      if (dryCategories.includes("dry-herb-accessories")) {
+        flow.push({
+          q: "dry-accessory-category",
+          title: "Dry-Herb Product Category",
+          subtitle: "Which product do you need accessories for? (Multi-select enabled)",
+          options: [
+            { 
+              label: "Bong Accessories", 
+              value: "bong-accessories",
+              tags: "bongs,accessories",
+              description: "Cleaners, cases, storage, and more",
+              image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/BongAcc1.png?v=1761060118"
+            },
+            { 
+              label: "Bubbler Accessories", 
+              value: "bubbler-accessories",
+              tags: "bubblers,accessories",
+              description: "Cleaners, cases, and storage",
+              image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/BubblerAcc1.png?v=1761060377"
+            },
+            { 
+              label: "Pipe Accessories", 
+              value: "pipe-accessories",
+              tags: "pipes,accessories",
+              description: "Cleaners, cases, and storage",
+              image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/PipeAcc.png?v=1761252970"
+            },
+            { 
+              label: "Dry-Herb Vaporizer Accessories", 
+              value: "dry-herb-vaporizer-accessories",
+              tags: "vaporizers,dry,accessories",
+              description: "Cleaning and storage solutions",
+              image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/DryvapeAcc.png?v=1761252962"
+            }
+          ]
+        });
+      }
+
+      dryCategories.forEach(dryCategory => {
+        if (dryCategory !== "dry-herb-accessories" && window.SPEC_SETS && window.SPEC_SETS[dryCategory]) {
+          window.SPEC_SETS[dryCategory].forEach(specGroup => {
+            if (shouldShowQuestion(specGroup) && !addedQuestions.has(specGroup.q)) {
+              flow.push({ ...specGroup, category: dryCategory });
+              addedQuestions.add(specGroup.q);
+            }
+          });
+        }
+      });
+    }
+
+    if (primaryTypes.includes("concentrated")) {
+      flow.push({
+        q: "conc-category",
+        title: "Concentrate Product Selection",
+        subtitle: "Select the concentrate product(s) you are interested in.",
+        options: [
+          { 
+            label: "Dab Rigs", 
+            value: "dab-rigs",
+            tags: "dab rig",
+            description: "Water pipe designed for vaporizing concentrates",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Dab_Rigs.png?v=1761059350"
+          },
+          { 
+            label: "Nectar Collectors", 
+            value: "nectar-collectors",
+            tags: "nectar collector",
+            description: "Handheld vertical pipes for dabbing.",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/nectar_collector.png?v=1761085261"
+          },
+          { 
+            label: "Vaporizers", 
+            value: "vaporizers",
+            tags: "vaporizers,concentrated",
+            description: "Electronic devices that heat concentrates",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Vaporizers.png?v=1761059234"
+          },
+          {
+            label: "Accessories",
+            value: "concentrated-herb-accessories",
+            tags: "concentrated,accessories",
+            description: "Accessories for concentrated herb products",
+            image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/DabAcc1.png?v=1761059579"
+          }
+        ]
+      });
+
+      const concCategories = state.selections["conc-category"]?.values || [];
+      
+      if (concCategories.includes("concentrated-herb-accessories")) {
+        flow.push({
+          q: "conc-accessory-category",
+          title: "Concentrated-Herb Product Category",
+          subtitle: "Which product do you need accessories for? (Multi-select enabled)",
+          options: [
+            { 
+              label: "Dab Rig Accessories", 
+              value: "dab-rig-accessories",
+              tags: "dab rig,accessories",
+              description: "Full range of dab accessories and tools",
+              image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/DabAcc1.png?v=1761059579"
+            },
+            { 
+              label: "Concentrate Vaporizer Accessories", 
+              value: "concentrate-vaporizer-accessories",
+              tags: "vaporizers,concentrated,accessories",
+              description: "Cleaning and storage for concentrate vapes",
+              image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/Vaporizers.png?v=1761059234"
+            }
+          ]
+        });
+      }
+
+      concCategories.forEach(concCategory => {
+        if (concCategory !== "concentrated-herb-accessories" && window.SPEC_SETS && window.SPEC_SETS[concCategory]) {
+          window.SPEC_SETS[concCategory].forEach(specGroup => {
+            if (shouldShowQuestion(specGroup) && !addedQuestions.has(specGroup.q)) {
+              flow.push({ ...specGroup, category: concCategory });
+              addedQuestions.add(specGroup.q);
+            }
+          });
+        }
+      });
+    }
+
+    const dryAccSelected = (state.selections["dry-category"]?.values || []).includes("dry-herb-accessories");
+    const concAccSelected = (state.selections["conc-category"]?.values || []).includes("concentrated-herb-accessories");
+    const isAccessories = dryAccSelected || concAccSelected;
+    
+    if (isAccessories && window.SPEC_SETS && window.SPEC_SETS["accessories"]) {
+      window.SPEC_SETS["accessories"].forEach(specGroup => {
+        if (shouldShowQuestion(specGroup) && !addedQuestions.has(specGroup.q)) {
+          flow.push({ ...specGroup, category: "accessories" });
+          addedQuestions.add(specGroup.q);
+        }
+      });
+    }
+
+    flow.push({
+      q: "style-category",
+      title: "Style Filter?",
+      subtitle: "Optional: filter by Color, Theme, Animal, Plant, Food, or Pattern (Multi-select enabled)",
+      options: [
+        { 
+          label: "Color", 
+          value: "color",
+          description: "Filter by specific colors",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/colors.png?v=1761337347"
+        },
+        { 
+          label: "Theme", 
+          value: "theme",
+          description: "Holiday, cosmic, and more",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/pumpkin.png?v=1761336040"
+        },
+        { 
+          label: "Animal", 
+          value: "animal",
+          description: "Animal designs and motifs",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/bears.png?v=1761336510"
+        },
+        { 
+          label: "Plant", 
+          value: "plant",
+          description: "Botanical and nature themes",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/plant.png?v=1761337622"
+        },
+        { 
+          label: "Food", 
+          value: "food",
+          description: "Fun food-inspired designs",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/fortune_cookie.png?v=1761335973"
+        },
+        { 
+          label: "Pattern", 
+          value: "pattern",
+          description: "Stripes, dots, and more",
+          image: "https://cdn.shopify.com/s/files/1/0623/6566/3311/files/camoflauge.jpg?v=1761336886"
+        },
+        { 
+          label: "None", 
+          value: "none",
+          description: "No style preference",
+          image: "https://placehold.co/400x280/94a3b8/white?text=NONE",
+          isAny: true,
+          selected: true
+        }
+      ]
+    });
+
+    const styleCategories = state.selections["style-category"]?.values || [];
+    if (styleCategories.length > 0 && !styleCategories.includes("none") && window.STYLE_DEFS) {
+      styleCategories.forEach(styleCategory => {
+        if (window.STYLE_DEFS[styleCategory]) {
+          flow.push({
+            q: `style-${styleCategory}`,
+            title: `Choose ${styleCategory.charAt(0).toUpperCase() + styleCategory.slice(1)}`,
+            subtitle: `Select specific ${styleCategory} preferences (Multi-select enabled)`,
+            options: window.STYLE_DEFS[styleCategory].map(item => ({
+              label: item.label,
+              value: item.label.toLowerCase().replace(/\s+/g, '-'),
+              tags: item.tags || item.label,
+              description: item.description,
+              image: item.image
+            }))
+          });
+        }
+      });
+    }
+
+    flow.push({
+      q: "smart-match",
+      title: "Smart Match",
+      subtitle: "Allow products that are missing one of your selected tags?",
+      isSmartMatch: true,
+      options: []
+    });
+
+    flow.push({
+      q: "price-range",
+      title: "Set Your Price Range",
+      subtitle: "Use the sliders to set your minimum and maximum price",
+      isPriceRange: true,
+      options: []
+    });
+
+    flow.push({
+      q: "price-sort",
+      title: "Sort Results?",
+      subtitle: "Rank by match score, price as tie-breaker",
+      options: [
+        { 
+          label: "Price High→Low", 
+          value: "score-high-to-low",
+          description: "Show premium options first",
+          image: "https://placehold.co/400x280/dc2626/white?text=HIGH+TO+LOW",
+          selected: true
+        },
+        { 
+          label: "Price Low→High", 
+          value: "score-low-to-high",
+          description: "Show budget-friendly options first",
+          image: "https://placehold.co/400x280/16a34a/white?text=LOW+TO+HIGH"
+        }
+      ]
+    });
+
+    state.questionFlow = flow;
+    return flow;
+  }
+
+  function handleOptionClick(question, option, element) {
+      const qKey = question.q;
+
+      if (!state.selections[qKey]) {
+          state.selections[qKey] = {
+              values: [],
+              tags: new Set(),
+              isAny: false
+          };
+      }
+
+      const currentSelection = state.selections[qKey];
+      const optionValue = option.value;
+      const optionTags = splitTags(option.tags);
+      const index = currentSelection.values.indexOf(optionValue);
+
+      const isAnyOrNone = option.isAny || option.value === 'none' || option.value === 'any-size' || option.value === 'any-feature' || option.value === 'no-add-ons';
+
+      if (isAnyOrNone) {
+          if (element.classList.contains('selected')) {
+              element.classList.remove('selected');
+              currentSelection.values = [];
+              currentSelection.tags = new Set();
+              currentSelection.isAny = false;
+          } else {
+              currentSelection.values = [optionValue];
+              currentSelection.tags = new Set(optionTags);
+              currentSelection.isAny = true;
+              
+              element.parentNode.querySelectorAll('.option-btn').forEach(btn => {
+                  if (btn !== element) {
+                      btn.classList.remove('selected');
+                  }
+              });
+              element.classList.add('selected');
+          }
+      } else {
+          const anyBtn = element.parentNode.querySelector('.option-btn.any.selected');
+          if (anyBtn) {
+              anyBtn.classList.remove('selected');
+              currentSelection.values = [];
+              currentSelection.tags = new Set();
+              currentSelection.isAny = false;
+          }
+
+          if (index > -1) {
+              element.classList.remove('selected');
+              currentSelection.values.splice(index, 1);
+              optionTags.forEach(tag => currentSelection.tags.delete(tag));
+          } else {
+              element.classList.add('selected');
+              currentSelection.values.push(optionValue);
+              optionTags.forEach(tag => currentSelection.tags.add(tag));
+          }
+      }
+
+      const selectionIsEmpty = currentSelection.values.length === 0;
+      $("nextBtn").disabled = selectionIsEmpty;
+
+      state.questionFlow = buildQuestionFlow();
+      updateNavigationButtons();
+  }
+
+  function renderQuestion(questionIndex) {
+    const question = state.questionFlow[questionIndex];
+    if (!question) return;
+
+    $("questionCounter").textContent = `Question ${questionIndex + 1} of ${state.questionFlow.length}`;
+    $("questionTitle").textContent = question.title || "";
+    $("questionSubtitle").textContent = question.subtitle || "";
+
+    if (question.isSmartMatch) {
+      $("questionOptions").innerHTML = "";
+      $("smartMatchContainer").classList.remove("hidden");
+      $("nextBtn").disabled = false;
+      return;
+    } else {
+      $("smartMatchContainer").classList.add("hidden");
+    }
+
+    if (question.isPriceRange) {
+      const currentMin = state.selections["price-range"]?.minPrice || 0;
+      const currentMax = state.selections["price-range"]?.maxPrice || 1000;
+      
+      $("questionOptions").innerHTML = `
+        <div class="price-range-container">
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>Minimum Price</span>
+              <span class="price-display" id="minPriceDisplay">$${currentMin}</span>
+            </div>
+            <input type="range" 
+                   id="minPriceSlider" 
+                   class="price-slider" 
+                   min="0" 
+                   max="1000" 
+                   step="5" 
+                   value="${currentMin}">
+          </div>
+          
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>Maximum Price</span>
+              <span class="price-display" id="maxPriceDisplay">$${currentMax}</span>
+            </div>
+            <input type="range" 
+                   id="maxPriceSlider" 
+                   class="price-slider" 
+                   min="0" 
+                   max="1000" 
+                   step="5" 
+                   value="${currentMax}">
+          </div>
+          
+          <div class="price-range-summary">
+            Showing products between <strong>$<span id="rangeSummaryMin">${currentMin}</span></strong> and <strong>$<span id="rangeSummaryMax">${currentMax}</span></strong>
+          </div>
+          
+          <div class="skip-price-filter">
+            <a class="skip-link" id="skipPriceFilter">Skip price filter (show all prices)</a>
+          </div>
+        </div>
+      `;
+      
+      setTimeout(() => {
+        const minSlider = $("minPriceSlider");
+        const maxSlider = $("maxPriceSlider");
+        const minDisplay = $("minPriceDisplay");
+        const maxDisplay = $("maxPriceDisplay");
+        const rangeSummaryMin = $("rangeSummaryMin");
+        const rangeSummaryMax = $("rangeSummaryMax");
+        const skipButton = $("skipPriceFilter");
+        
+        function updatePriceRange() {
+          let minVal = parseInt(minSlider.value);
+          let maxVal = parseInt(maxSlider.value);
+          
+          if (minVal > maxVal) {
+            minVal = maxVal;
+            minSlider.value = minVal;
+          }
+          
+          if (maxVal < minVal) {
+            maxVal = minVal;
+            maxSlider.value = maxVal;
+          }
+          
+          minDisplay.textContent = `$${minVal}`;
+          maxDisplay.textContent = `$${maxVal}`;
+          rangeSummaryMin.textContent = minVal;
+          rangeSummaryMax.textContent = maxVal;
+          
+          state.selections["price-range"] = { 
+            minPrice: minVal, 
+            maxPrice: maxVal,
+            isAny: false
+          };
+        }
+        
+        minSlider.addEventListener("input", updatePriceRange);
+        maxSlider.addEventListener("input", updatePriceRange);
+        
+        skipButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          state.selections["price-range"] = { 
+            minPrice: 0, 
+            maxPrice: 1000,
+            isAny: true
+          };
+          goToNextQuestion();
+        });
+        
+        if (!state.selections["price-range"]) {
+          state.selections["price-range"] = { 
+            minPrice: 0, 
+            maxPrice: 1000,
+            isAny: true
+          };
+        }
+      }, 0);
+      
+      return; 
+    }
+
+    $("questionOptions").innerHTML = "";
+
+    question.options.forEach(option => {
+      const btn = document.createElement("button");
+      btn.className = `option-btn ${option.isAny ? 'any' : ''}`;
+      btn.innerHTML = `
+        ${option.image ? `<img src="${option.image}" alt="${option.label}" class="option-image">` : ''}
+        <div class="option-title">${option.label}</div>
+        <div class="option-description">${option.description}</div>
+      `;
+      
+      const currentSelection = state.selections[question.q];
+      if (currentSelection?.values.includes(option.value)) {
+        btn.classList.add("selected");
+      } else if (option.selected && !currentSelection) {
+        btn.classList.add("selected");
+        if (!state.selections[question.q]) {
+          state.selections[question.q] = {
+            values: [option.value],
+            tags: new Set(splitTags(option.tags)),
+            isAny: option.isAny || false
+          };
+        }
+      }
+
+      btn.addEventListener("click", () => handleOptionClick(question, option, btn));
+      $("questionOptions").appendChild(btn);
+    });
+  }
+
+  function updateNavigationButtons() {
+    const totalQuestions = state.questionFlow.length;
+    const currentQ = state.questionFlow[state.currentQuestionIndex];
+    const isLastQuestion = state.currentQuestionIndex === totalQuestions - 1;
+
+    $("prevBtn").disabled = state.currentQuestionIndex === 0;
+
+    if (isLastQuestion) {
+        $("nextBtn").textContent = "Submit";
+        $("nextBtn").classList.remove("next");
+        $("nextBtn").classList.add("submit");
+    } else {
+        $("nextBtn").textContent = "Next";
+        $("nextBtn").classList.remove("submit");
+        $("nextBtn").classList.add("next");
+    }
+
+    const qKey = currentQ.q;
+    const selection = state.selections[qKey];
+    
+    if (!currentQ.isPriceRange && !currentQ.isSmartMatch) {
+      $("nextBtn").disabled = !(selection && selection.values.length > 0);
+    } else {
+      $("nextBtn").disabled = false;
+    }
+    
+    if (state.questionFlow.length === 0) {
+      $("nextBtn").disabled = true;
+    }
+    
+    updateProgressBar(state.currentQuestionIndex + 1, totalQuestions);
+  }
+
+  function advanceQuestion() {
+      state.questionFlow = buildQuestionFlow(); 
+      
+      let nextIndex = state.currentQuestionIndex + 1;
+      
+      while (nextIndex < state.questionFlow.length && !shouldShowQuestion(state.questionFlow[nextIndex])) {
+          nextIndex++;
+      }
+      
+      return nextIndex;
+  }
+
+  function goToNextQuestion() {
+      const nextIndex = advanceQuestion();
+      
+      if (nextIndex < state.questionFlow.length) {
+          state.currentQuestionIndex = nextIndex;
+          renderQuestion(state.currentQuestionIndex);
+      } else {
+          showResults();
+      }
+      
+      updateNavigationButtons();
+  }
+
+  function goToPrevQuestion() {
+      state.questionFlow = buildQuestionFlow(); 
+
+      let prevIndex = state.currentQuestionIndex - 1;
+      
+      while (prevIndex >= 0 && !shouldShowQuestion(state.questionFlow[prevIndex])) {
+          prevIndex--;
+      }
+      
+      if (prevIndex >= 0) {
+          state.currentQuestionIndex = prevIndex;
+          renderQuestion(state.currentQuestionIndex);
+      }
+      
+      updateNavigationButtons();
+  }
+
+  function updateProgressBar(current, total) {
+      const progressBar = $("progressBar");
+      progressBar.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+          const step = document.createElement("div");
+          step.className = 'progress-step';
+          if (i < current - 1) {
+              step.classList.add('completed');
+          } else if (i === current - 1) {
+              step.classList.add('active');
+          }
+          progressBar.appendChild(step);
+      }
+  }
+
+  function showResults() {
+    $("questionScreen").classList.add("hidden");
+    $("results-area").classList.remove("hidden");
+    
+    const allSelectedTags = new Set();
+    for (const key in state.selections) {
+        const selection = state.selections[key];
+        if (selection.tags) {
+            selection.tags.forEach(tag => allSelectedTags.add(tag));
+        }
+    }
+
+    const tagsContainer = $("tags-container");
+    tagsContainer.innerHTML = Array.from(allSelectedTags).map(tag => `<span class="tag-chip">${tag}</span>`).join('');
+
+    const smartMatch = $("smartMatch") ? $("smartMatch").checked : false;
+    const priceRange = state.selections["price-range"] || { minPrice: 0, maxPrice: 1000, isAny: true };
+    
+    let filteredProducts = state.products.filter(product => {
+        if (!product.available) return false;
+        
+        if (!priceRange.isAny) {
+            const productPrice = parseFloat(product.price) || 0;
+            if (productPrice < priceRange.minPrice || productPrice > priceRange.maxPrice) {
+                return false;
+            }
+        }
+        
+        let matchCount = 0;
+        allSelectedTags.forEach(selectedTag => {
+            if (product.tags.has(selectedTag)) {
+                matchCount++;
+            }
+        });
+        
+        const totalTags = allSelectedTags.size;
+        
+        if (smartMatch) {
+            return matchCount >= totalTags - 1;
+        }
+        
+        return matchCount === totalTags;
+    });
+
+    filteredProducts = filteredProducts.map(product => {
+        let matchCount = 0;
+        allSelectedTags.forEach(selectedTag => {
+            if (product.tags.has(selectedTag)) {
+                matchCount++;
+            }
+        });
+        
+        return {
+            ...product,
+            matchScore: matchCount / allSelectedTags.size
+        };
+    });
+
+    const sortPreference = state.selections["price-sort"]?.values[0] || "score-high-to-low";
+    
+    filteredProducts.sort((a, b) => {
+        if (b.matchScore !== a.matchScore) {
+            return b.matchScore - a.matchScore;
+        }
+        
+        const priceA = parseFloat(a.price) || 0;
+        const priceB = parseFloat(b.price) || 0;
+        
+        if (sortPreference === "score-low-to-high") {
+            return priceA - priceB;
+        } else {
+            return priceB - priceA;
+        }
+    });
+
+    const recommendationList = $("recommendation-list");
+    
+    if (filteredProducts.length === 0) {
+        recommendationList.innerHTML = `
+            <div class="col-span-2 text-center py-8">
+                <p class="text-xl text-slate-600 mb-4">No products found matching your criteria.</p>
+                <p class="text-slate-500">Try enabling Smart Match or adjusting your selections.</p>
+            </div>
+        `;
+        return;
+    }
+
+    recommendationList.innerHTML = filteredProducts.map(product => {
+        const matchPercentage = Math.round(product.matchScore * 100);
+        return `
+            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                ${product.image ? `
+                    <img src="${product.image}" alt="${product.title}" class="w-full h-48 object-cover">
+                ` : `
+                    <div class="w-full h-48 bg-gray-200 flex items-center justify-center">
+                        <span class="text-gray-400">No image</span>
+                    </div>
+                `}
+                <div class="p-4">
+                    <h3 class="font-bold text-lg mb-2 text-slate-900">${product.title}</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-2xl font-bold text-purple-900">$${product.price}</span>
+                        <span class="text-sm text-slate-600">${matchPercentage}% match</span>
+                    </div>
+                    <a href="${product.url}" class="block w-full bg-purple-900 text-white text-center py-2 rounded-lg font-semibold hover:bg-purple-800 transition-colors">
+                        View Product
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+  function setupApp() {
+      state.questionFlow = buildQuestionFlow();
+      state.currentQuestionIndex = 0;
+
+      $("prevBtn").addEventListener("click", goToPrevQuestion);
+      $("nextBtn").addEventListener("click", goToNextQuestion);
+      $("start-over").addEventListener("click", () => window.location.reload());
+      $("back-to-questions").addEventListener("click", () => {
+          $("results-area").classList.add("hidden");
+          $("questionScreen").classList.remove("hidden");
+          renderQuestion(state.currentQuestionIndex);
+          updateNavigationButtons();
+      });
+
+      const hardcodedUrl = 'https://cdn.shopify.com/s/files/1/0623/6566/3311/files/full10.14.csv?v=1760559973';
+      const csvAssetUrl = hardcodedUrl;
+      
+      $("loadStatus").textContent = `Fetching CSV from external CDN...`;
+
+      Papa.parse(csvAssetUrl, {
+          download: true,
+          header: true,
+          skipEmptyLines: true,
+          worker: true,
+          complete: (results) => {
+              console.log("PapaParse Results:", results);
+              if (results.errors.length > 0) {
+                  $("loadStatus").innerHTML = `<span style="color: orange;">Warning: CSV parsed with errors. Check console.</span>`;
+                  console.error("PapaParse Errors:", results.errors);
+              }
+              processCSV(results);
+              
+              renderQuestion(state.currentQuestionIndex); 
+              $("questionScreen").classList.remove("hidden");
+          },
+          error: (error) => {
+              $("loadStatus").innerHTML = `<span style="color: red;">Error loading CSV from URL. Check Network Tab.</span>`;
+              console.error("PapaParse Fetch Error:", error);
+          }
+      });
+      
+      updateNavigationButtons();
+  }
+
+  document.addEventListener('DOMContentLoaded', setupApp);
+
+  </script>
+</section>
+
+{% schema %}
+{
+  "name": "Autobongs Product Finder",
+  "settings": [
+    { 
+      "type": "text", 
+      "id": "csv_url", 
+      "label": "Products CSV URL", 
+      "info": "Paste the full URL from Content > Files" 
+    },
+    { 
+      "type": "text", 
+      "id": "synonyms_url", 
+      "label": "Synonym XLSX URL(optional)", 
+      "info": "Paste a URL from Content > Files to autoload synonym list." 
+    },
+    { 
+      "type": "checkbox", 
+      "id": "show_debug", 
+      "label": "Show Debug Button", 
+      "default": false 
+    }
+  ],
+  "presets": [
+    { "name": "Autobongs Product Finder" }
+  ]
+}
+{% endschema %}
